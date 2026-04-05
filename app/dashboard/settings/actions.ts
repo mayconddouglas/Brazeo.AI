@@ -26,7 +26,7 @@ export async function saveSettingsAction(formData: FormData) {
 
   if (error) {
     console.error("Erro ao salvar configs:", error);
-    return { error: "Erro ao salvar configurações no banco de dados." };
+    return { error: `Erro do Banco: ${error.message}` };
   }
 
   revalidatePath("/dashboard/settings");
