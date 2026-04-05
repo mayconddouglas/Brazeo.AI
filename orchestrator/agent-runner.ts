@@ -64,6 +64,12 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     if (history) {
       formattedHistory = history.reverse().map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.content}`).join('\n');
     }
+    
+    // Load agent settings
+    const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+    if (settings) {
+      user.settings = settings;
+    }
   } catch (error) {
     console.warn('Supabase is not configured or failed. Running in memory mode.', error);
   }
@@ -108,15 +114,21 @@ Responda APENAS com o nome da intenção (ex: criar_lembrete).`;
     const result = await executeDirective(intent, user, content, formattedHistory);
 
     // 6. Generate Final Response
-    const responsePrompt = `Você é o Brazeo.IA, um assistente pessoal inteligente no WhatsApp.
-Seja amigável, direto e conciso. Use emojis moderadamente.
+    const agentName = user.settings?.agent_name || 'Brazeo.IA';
+    const agentTone = user.settings?.agent_tone || 'friendly';
+    const agentInstructions = user.settings?.agent_instructions ? `Regras Adicionais de Comportamento:\n${user.settings.agent_instructions}\n\n` : '';
 
-Intenção identificada: ${intent}
-Resultado da execução: ${JSON.stringify(result)}
+    const responsePrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
+O seu tom de resposta deve ser estritamente: ${agentTone}.
+${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
 
-Mensagem do usuário: "${content}"
+${agentInstructions}
+Intenção identificada na mensagem do cliente: ${intent}
+Resultado da execução (dados de sistema): ${JSON.stringify(result)}
 
-Gere a resposta final para enviar ao usuário via WhatsApp.`;
+Mensagem atual do usuário: "${content}"
+
+Gere a resposta final para enviar ao usuário no WhatsApp. Nunca saia do seu personagem.`;
 
     const finalResponse = await openai.chat.completions.create({
       model: 'openai/gpt-4o-mini',
