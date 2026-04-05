@@ -1,7 +1,14 @@
 import { getServiceSupabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000', // Optional
+    'X-Title': 'Brazeo.IA', // Optional
+  }
+});
 
 export async function executeDirective(intent: string, user: any, content: string, history: string) {
   switch (intent) {
@@ -31,12 +38,13 @@ Responda em formato JSON estrito com as seguintes chaves:
 Apenas o JSON, sem markdown.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
+    const response = await openai.chat.completions.create({
+      model: 'openai/gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
     });
 
-    let jsonStr = response.text?.trim() || '{}';
+    let jsonStr = response.choices[0].message?.content?.trim() || '{}';
     if (jsonStr.startsWith('```json')) {
       jsonStr = jsonStr.replace(/```json\n?/, '').replace(/```$/, '');
     }

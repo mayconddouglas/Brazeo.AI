@@ -1,9 +1,16 @@
 import { getServiceSupabase } from '@/lib/supabase';
-import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import { executeDirective } from './executor';
 
-// Initialize Gemini
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY });
+// Initialize OpenRouter
+const openai = new OpenAI({
+  baseURL: 'https://openrouter.ai/api/v1',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  defaultHeaders: {
+    'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000', // Optional, for including your app on openrouter.ai rankings.
+    'X-Title': 'Brazeo.IA', // Optional. Shows in rankings on openrouter.ai.
+  }
+});
 
 export async function runAgent(phone: string, content: string): Promise<string> {
   const supabase = getServiceSupabase();
@@ -78,12 +85,13 @@ Mensagem atual do usuário: "${content}"
 
 Responda APENAS com o nome da intenção (ex: criar_lembrete).`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: systemPrompt,
+    const response = await openai.chat.completions.create({
+      model: 'openai/gpt-4o-mini',
+      messages: [{ role: 'user', content: systemPrompt }],
+      temperature: 0.1,
     });
 
-    const intent = response.text?.trim().toLowerCase() || 'resposta_livre';
+    const intent = response.choices[0].message?.content?.trim().toLowerCase() || 'resposta_livre';
     
     try {
       // Update the message with the classified intent
@@ -110,12 +118,12 @@ Mensagem do usuário: "${content}"
 
 Gere a resposta final para enviar ao usuário via WhatsApp.`;
 
-    const finalResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: responsePrompt,
+    const finalResponse = await openai.chat.completions.create({
+      model: 'openai/gpt-4o-mini',
+      messages: [{ role: 'user', content: responsePrompt }],
     });
 
-    const replyText = finalResponse.text?.trim() || 'Desculpe, não consegui processar sua solicitação agora.';
+    const replyText = finalResponse.choices[0].message?.content?.trim() || 'Desculpe, não consegui processar sua solicitação agora.';
 
     try {
       // Save assistant message
