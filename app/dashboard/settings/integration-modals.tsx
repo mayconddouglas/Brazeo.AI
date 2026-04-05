@@ -36,9 +36,7 @@ export function EvolutionModal({ initialData }: { initialData: any }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Configurar</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" size="sm">Configurar</Button>} />
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -106,9 +104,7 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Configurar</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button variant="outline" size="sm">Configurar</Button>} />
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
