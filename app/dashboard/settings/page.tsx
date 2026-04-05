@@ -2,6 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
+  const hasEvolutionApi = !!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL;
+  const hasOpenRouterApi = !!process.env.OPENROUTER_API_KEY;
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -49,16 +52,20 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="space-y-0.5">
                   <div className="font-medium">Evolution API (WhatsApp)</div>
-                  <div className="text-sm text-muted-foreground">Conectado à instância 'brazeo'</div>
+                  <div className="text-sm text-muted-foreground">
+                    {hasEvolutionApi ? `Conectado à instância '${process.env.EVOLUTION_INSTANCE_NAME || 'padrão'}'` : 'Não configurado nas variáveis de ambiente'}
+                  </div>
                 </div>
-                <Button variant="outline" size="sm">Configurar</Button>
+                <Button variant="outline" size="sm" disabled={hasEvolutionApi}>{hasEvolutionApi ? 'Ativo' : 'Configurar'}</Button>
               </div>
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="space-y-0.5">
-                  <div className="font-medium">Claude API / Gemini API</div>
-                  <div className="text-sm text-muted-foreground">Ativo</div>
+                  <div className="font-medium">OpenRouter API (OpenAI)</div>
+                  <div className="text-sm text-muted-foreground">
+                    {hasOpenRouterApi ? 'Chave de API detectada' : 'Não configurado nas variáveis de ambiente'}
+                  </div>
                 </div>
-                <Button variant="outline" size="sm">Configurar</Button>
+                <Button variant="outline" size="sm" disabled={hasOpenRouterApi}>{hasOpenRouterApi ? 'Ativo' : 'Configurar'}</Button>
               </div>
             </div>
           </CardContent>
