@@ -5,7 +5,7 @@ import { executeDirective } from './executor';
 // Initialize OpenRouter
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY || 'dummy-key-for-build',
   defaultHeaders: {
     'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000', // Optional, for including your app on openrouter.ai rankings.
     'X-Title': 'Brazeo.IA', // Optional. Shows in rankings on openrouter.ai.
