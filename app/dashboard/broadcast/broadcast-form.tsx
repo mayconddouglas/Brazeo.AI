@@ -11,10 +11,14 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createBroadcastAction } from "./actions";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SearchIcon, Loader2, CalendarIcon, SendIcon, ClockIcon } from "lucide-react";
 
 export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
   const [target, setTarget] = useState<string>("all");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [scheduleDate, setScheduleDate] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const toggleUser = (userId: string) => {
@@ -25,11 +29,16 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
     );
   };
 
+  const filteredUsers = activeUsers.filter(u => 
+    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.phone?.includes(searchQuery)
+  );
+
   const selectAll = () => {
-    if (selectedUsers.length === activeUsers.length) {
+    if (selectedUsers.length === filteredUsers.length) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(activeUsers.map(u => u.id));
+      setSelectedUsers(filteredUsers.map(u => u.id));
     }
   };
 
@@ -53,6 +62,8 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
         const form = e.target as HTMLFormElement;
         form.reset();
         setSelectedUsers([]);
+        setMessageText("");
+        setScheduleDate("");
       }
     });
   };
@@ -80,15 +91,26 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
 
           {target === "specific" && (
             <div className="flex flex-col gap-2 border rounded-md p-3 bg-muted/20">
-              <div className="flex items-center justify-between border-b pb-2">
-                <Label className="text-sm font-medium">Selecione os contatos</Label>
-                <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
-                  {selectedUsers.length === activeUsers.length ? "Desmarcar Todos" : "Marcar Todos"}
-                </Button>
+              <div className="flex flex-col gap-2 border-b pb-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Selecione os contatos</Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
+                    {selectedUsers.length === filteredUsers.length && filteredUsers.length > 0 ? "Desmarcar Todos" : "Marcar Visíveis"}
+                  </Button>
+                </div>
+                <div className="relative">
+                  <SearchIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Buscar por nome ou telefone..." 
+                    className="pl-9 h-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
-              <ScrollArea className="h-[150px] w-full rounded-md mt-2">
+              <ScrollArea className="h-[200px] w-full rounded-md mt-2">
                 <div className="flex flex-col gap-3 p-1">
-                  {activeUsers.map((user) => (
+                  {filteredUsers.map((user) => (
                     <div key={user.id} className="flex items-center space-x-2">
                       <Checkbox 
                         id={`user-${user.id}`} 
@@ -103,45 +125,79 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
                       </label>
                     </div>
                   ))}
-                  {activeUsers.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center">Nenhum usuário ativo encontrado.</p>
+                  {filteredUsers.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Nenhum contato encontrado.</p>
                   )}
                 </div>
               </ScrollArea>
-              <div className="text-xs text-muted-foreground mt-1">
-                {selectedUsers.length} usuário(s) selecionado(s).
+              <div className="text-xs text-muted-foreground mt-1 flex justify-between">
+                <span>{selectedUsers.length} selecionado(s)</span>
+                <span>{filteredUsers.length} listado(s)</span>
               </div>
             </div>
           )}
           
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="message">Mensagem</Label>
-            <Textarea 
-              name="message"
-              id="message" 
-              required
-              className="min-h-[120px]"
-              placeholder="Digite sua mensagem aqui..."
-            />
-            <p className="text-[11px] text-muted-foreground">
-              Dica: Use <strong className="font-mono text-foreground">{`{nome}`}</strong> para enviar mensagens personalizadas. O sistema trocará pelo primeiro nome do cliente.
-            </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="message">Mensagem</Label>
+                <span className="text-[10px] text-muted-foreground">{messageText.length} caracteres</span>
+              </div>
+              <Textarea 
+                name="message"
+                id="message" 
+                required
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                className="min-h-[120px] resize-y"
+                placeholder="Digite sua mensagem aqui..."
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Dica: Use <strong className="font-mono text-foreground">{`{nome}`}</strong> para personalizar.
+              </p>
+            </div>
+            
+            {messageText && (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs text-muted-foreground">Pré-visualização</Label>
+                <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-lg rounded-tl-none border border-emerald-200 dark:border-emerald-800/50 w-full md:w-[85%] relative">
+                  <p className="text-sm whitespace-pre-wrap text-emerald-950 dark:text-emerald-100">
+                    {messageText.replace(/\{nome\}/gi, "João")}
+                  </p>
+                  <div className="text-[9px] text-emerald-700/60 dark:text-emerald-400/50 text-right mt-1">
+                    Agora
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="flex flex-col gap-2">
             <Label htmlFor="schedule">Agendamento (Opcional)</Label>
-            <Input 
-              type="datetime-local" 
-              name="schedule"
-              id="schedule" 
-            />
+            <div className="relative">
+              <CalendarIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                type="datetime-local" 
+                name="schedule"
+                id="schedule" 
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                className="pl-9"
+              />
+            </div>
             <p className="text-[11px] text-muted-foreground">
               Se deixar em branco, o envio será imediato.
             </p>
           </div>
           
-          <Button type="submit" className="mt-2" disabled={isPending}>
-            {isPending ? "Processando..." : "Salvar / Enviar Broadcast"}
+          <Button type="submit" className="mt-2 w-full" disabled={isPending || (target === 'specific' && selectedUsers.length === 0)}>
+            {isPending ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...</>
+            ) : scheduleDate ? (
+              <><ClockIcon className="mr-2 h-4 w-4" /> Agendar Disparo</>
+            ) : (
+              <><SendIcon className="mr-2 h-4 w-4" /> Enviar Agora</>
+            )}
           </Button>
         </form>
       </CardContent>

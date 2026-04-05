@@ -21,14 +21,15 @@ export default async function BroadcastPage() {
     .order("name", { ascending: true });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Broadcast</h2>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1">
+        <h2 className="text-3xl font-bold tracking-tight">Broadcast</h2>
+        <p className="text-muted-foreground">Crie, agende e gerencie disparos de mensagens em massa.</p>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <BroadcastForm activeUsers={activeUsers || []} />
-        <BroadcastHistory broadcasts={broadcasts || []} />
+        <BroadcastHistory broadcasts={broadcasts || []} totalActiveUsers={activeUsers?.length || 0} />
       </div>
     </div>
   );
