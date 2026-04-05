@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getServiceSupabase } from "@/lib/supabase";
 
-export default function UsersPage() {
+export const revalidate = 0;
+
+export default async function UsersPage() {
+  const supabase = getServiceSupabase();
+  const { data: users } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -15,10 +21,6 @@ export default function UsersPage() {
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
-            <div className="p-4 text-sm text-muted-foreground">
-              A tabela de usuários será renderizada aqui.
-            </div>
-            {/* Placeholder for a table */}
             <div className="w-full overflow-auto">
               <table className="w-full caption-bottom text-sm">
                 <thead className="[&_tr]:border-b">
@@ -30,18 +32,25 @@ export default function UsersPage() {
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
-                  <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <td className="p-4 align-middle">João Silva</td>
-                    <td className="p-4 align-middle">+55 11 99999-9999</td>
-                    <td className="p-4 align-middle">
-                      <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-green-500/20 text-green-700">
-                        Ativo
-                      </span>
-                    </td>
-                    <td className="p-4 align-middle">
-                      <Button variant="ghost" size="sm">Editar</Button>
-                    </td>
-                  </tr>
+                  {users?.map((user) => (
+                    <tr key={user.id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                      <td className="p-4 align-middle">{user.name || 'Sem nome'}</td>
+                      <td className="p-4 align-middle">{user.phone}</td>
+                      <td className="p-4 align-middle">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${user.status === 'active' ? 'bg-green-500/20 text-green-700' : 'bg-red-500/20 text-red-700'}`}>
+                          {user.status === 'active' ? 'Ativo' : user.status}
+                        </span>
+                      </td>
+                      <td className="p-4 align-middle">
+                        <Button variant="ghost" size="sm">Editar</Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!users?.length && (
+                    <tr>
+                      <td colSpan={4} className="p-4 text-center text-muted-foreground">Nenhum usuário encontrado.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

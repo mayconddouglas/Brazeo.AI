@@ -1,7 +1,25 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, MessageSquare, CheckCircle, Clock } from "lucide-react";
+import { getServiceSupabase } from "@/lib/supabase";
 
-export default function DashboardPage() {
+export const revalidate = 0;
+
+export default async function DashboardPage() {
+  const supabase = getServiceSupabase();
+
+  // Fetch basic stats
+  const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+  const { count: messagesCount } = await supabase.from('messages').select('*', { count: 'exact', head: true });
+  const { count: tasksDone } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('done', true);
+  const { count: remindersActive } = await supabase.from('reminders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+
+  // Fetch recent users
+  const { data: recentUsers } = await supabase
+    .from('users')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(5);
+
   return (
     <div className="flex flex-col gap-8">
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
@@ -11,8 +29,7 @@ export default function DashboardPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+2 desde ontem</p>
+            <div className="text-2xl font-bold">{usersCount || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -21,8 +38,7 @@ export default function DashboardPage() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">342</div>
-            <p className="text-xs text-muted-foreground">+48 hoje</p>
+            <div className="text-2xl font-bold">{messagesCount || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -31,8 +47,7 @@ export default function DashboardPage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89</div>
-            <p className="text-xs text-muted-foreground">74% de conclusão</p>
+            <div className="text-2xl font-bold">{tasksDone || 0}</div>
           </CardContent>
         </Card>
         <Card>
@@ -41,8 +56,7 @@ export default function DashboardPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
-            <p className="text-xs text-muted-foreground">Próximo em 2h</p>
+            <div className="text-2xl font-bold">{remindersActive || 0}</div>
           </CardContent>
         </Card>
       </div>
@@ -62,21 +76,20 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {/* Mock users */}
-              <div className="flex items-center">
-                <div className="ml-4 space-y-1">
-                  <p className="text-sm font-medium leading-none">João Silva</p>
-                  <p className="text-sm text-muted-foreground">+55 11 99999-9999</p>
+              {recentUsers?.map((u) => (
+                <div key={u.id} className="flex items-center">
+                  <div className="ml-4 space-y-1">
+                    <p className="text-sm font-medium leading-none">{u.name || "Sem nome"}</p>
+                    <p className="text-sm text-muted-foreground">{u.phone}</p>
+                  </div>
+                  <div className="ml-auto font-medium text-sm text-green-500">
+                    {u.status === 'active' ? 'Ativo' : u.status}
+                  </div>
                 </div>
-                <div className="ml-auto font-medium text-sm text-green-500">Ativo</div>
-              </div>
-              <div className="flex items-center">
-                <div className="ml-4 space-y-1">
-                  <p className="text-sm font-medium leading-none">Maria Souza</p>
-                  <p className="text-sm text-muted-foreground">+55 21 98888-8888</p>
-                </div>
-                <div className="ml-auto font-medium text-sm text-green-500">Ativo</div>
-              </div>
+              ))}
+              {!recentUsers?.length && (
+                <p className="text-sm text-muted-foreground">Nenhum usuário encontrado.</p>
+              )}
             </div>
           </CardContent>
         </Card>
