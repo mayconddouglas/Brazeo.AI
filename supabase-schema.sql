@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS settings (
   agent_name text NOT NULL DEFAULT 'Brazeo.IA',
   agent_tone text NOT NULL DEFAULT 'friendly',
   agent_instructions text,
+  evolution_api_url text,
+  evolution_api_key text,
+  evolution_instance_name text,
+  openrouter_api_key text,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 

@@ -84,9 +84,11 @@ export async function processBroadcast(broadcastId: string) {
     users = data || [];
   }
 
-  const apiUrl = process.env.EVOLUTION_API_URL;
-  const apiKey = process.env.EVOLUTION_API_KEY;
-  const instance = process.env.EVOLUTION_INSTANCE_NAME;
+  const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single();
+
+  const apiUrl = settings?.evolution_api_url || process.env.EVOLUTION_API_URL;
+  const apiKey = settings?.evolution_api_key || process.env.EVOLUTION_API_KEY;
+  const instance = settings?.evolution_instance_name || process.env.EVOLUTION_INSTANCE_NAME;
 
   if (!apiUrl || !apiKey || !instance) {
     console.warn("Credenciais da Evolution API não configuradas. Simulando envio.");

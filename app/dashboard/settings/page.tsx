@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { getServiceSupabase } from "@/lib/supabase";
 import { SettingsForm } from "./settings-form";
 import { WebhookModal } from "./webhook-modal";
+import { EvolutionModal, OpenRouterModal } from "./integration-modals";
 
 export const revalidate = 0;
 
@@ -11,8 +11,8 @@ export default async function SettingsPage() {
 
   const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single();
 
-  const hasEvolutionApi = !!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL;
-  const hasOpenRouterApi = !!process.env.OPENROUTER_API_KEY;
+  const hasEvolutionApi = !!settings?.evolution_api_key || (!!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL);
+  const hasOpenRouterApi = !!settings?.openrouter_api_key || !!process.env.OPENROUTER_API_KEY;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return (
@@ -33,21 +33,30 @@ export default async function SettingsPage() {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="space-y-0.5">
-                  <div className="font-medium">Evolution API (WhatsApp)</div>
+                  <div className="font-medium flex items-center gap-2">
+                    Evolution API (WhatsApp)
+                    {hasEvolutionApi && <span className="inline-flex h-2 w-2 rounded-full bg-green-500" title="Ativo" />}
+                  </div>
                   <div className="text-sm text-muted-foreground">
-                    {hasEvolutionApi ? `Conectado à instância '${process.env.EVOLUTION_INSTANCE_NAME || 'padrão'}'` : 'Não configurado nas variáveis de ambiente'}
+                    {hasEvolutionApi ? `Conectado à instância '${settings?.evolution_instance_name || process.env.EVOLUTION_INSTANCE_NAME || 'padrão'}'` : 'Não configurado'}
                   </div>
                 </div>
-                <WebhookModal siteUrl={siteUrl} />
+                <div className="flex items-center gap-2">
+                  <WebhookModal siteUrl={siteUrl} />
+                  <EvolutionModal initialData={settings} />
+                </div>
               </div>
               <div className="flex items-center justify-between border-b pb-4">
                 <div className="space-y-0.5">
-                  <div className="font-medium">OpenRouter API (OpenAI)</div>
+                  <div className="font-medium flex items-center gap-2">
+                    OpenRouter API (OpenAI)
+                    {hasOpenRouterApi && <span className="inline-flex h-2 w-2 rounded-full bg-green-500" title="Ativo" />}
+                  </div>
                   <div className="text-sm text-muted-foreground">
-                    {hasOpenRouterApi ? 'Chave de API detectada' : 'Não configurado nas variáveis de ambiente'}
+                    {hasOpenRouterApi ? 'Chave de API detectada' : 'Não configurado'}
                   </div>
                 </div>
-                <Button variant="outline" size="sm" disabled={hasOpenRouterApi}>{hasOpenRouterApi ? 'Ativo' : 'Configurar'}</Button>
+                <OpenRouterModal initialData={settings} />
               </div>
             </div>
           </CardContent>

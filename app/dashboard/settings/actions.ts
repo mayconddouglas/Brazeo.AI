@@ -3,6 +3,54 @@
 import { getServiceSupabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
+export async function saveEvolutionKeysAction(formData: FormData) {
+  const supabase = getServiceSupabase();
+  
+  const evolution_api_url = formData.get("evolution_api_url") as string;
+  const evolution_api_key = formData.get("evolution_api_key") as string;
+  const evolution_instance_name = formData.get("evolution_instance_name") as string;
+
+  const { error } = await supabase
+    .from("settings")
+    .update({
+      evolution_api_url: evolution_api_url || null,
+      evolution_api_key: evolution_api_key || null,
+      evolution_instance_name: evolution_instance_name || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", 1);
+
+  if (error) {
+    console.error("Erro ao salvar chaves da Evolution:", error);
+    return { error: `Erro do Banco: ${error.message}` };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true };
+}
+
+export async function saveOpenRouterKeyAction(formData: FormData) {
+  const supabase = getServiceSupabase();
+  
+  const openrouter_api_key = formData.get("openrouter_api_key") as string;
+
+  const { error } = await supabase
+    .from("settings")
+    .update({
+      openrouter_api_key: openrouter_api_key || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", 1);
+
+  if (error) {
+    console.error("Erro ao salvar chave do OpenRouter:", error);
+    return { error: `Erro do Banco: ${error.message}` };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true };
+}
+
 export async function saveSettingsAction(formData: FormData) {
   const supabase = getServiceSupabase();
   
@@ -14,15 +62,13 @@ export async function saveSettingsAction(formData: FormData) {
 
   const { error } = await supabase
     .from("settings")
-    .upsert({
-      id: 1, // Sempre atualiza a mesma linha
+    .update({
       agent_name,
       agent_tone,
       agent_instructions,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'id' })
-    .select()
-    .single();
+    })
+    .eq("id", 1);
 
   if (error) {
     console.error("Erro ao salvar configs:", error);

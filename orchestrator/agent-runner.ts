@@ -2,15 +2,17 @@ import { getServiceSupabase } from '@/lib/supabase';
 import OpenAI from 'openai';
 import { executeDirective } from './executor';
 
-// Initialize OpenRouter
-const openai = new OpenAI({
-  baseURL: 'https://openrouter.ai/api/v1',
-  apiKey: process.env.OPENROUTER_API_KEY || 'dummy-key-for-build',
-  defaultHeaders: {
-    'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000', // Optional, for including your app on openrouter.ai rankings.
-    'X-Title': 'Brazeo.IA', // Optional. Shows in rankings on openrouter.ai.
-  }
-});
+// Initialize base OpenRouter helper function to create dynamic instances
+const createOpenAIClient = (apiKey: string | undefined) => {
+  return new OpenAI({
+    baseURL: 'https://openrouter.ai/api/v1',
+    apiKey: apiKey || process.env.OPENROUTER_API_KEY || 'dummy-key-for-build',
+    defaultHeaders: {
+      'HTTP-Referer': process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      'X-Title': 'Brazeo.IA',
+    }
+  });
+};
 
 export async function runAgent(phone: string, content: string): Promise<string> {
   const supabase = getServiceSupabase();
@@ -76,6 +78,8 @@ export async function runAgent(phone: string, content: string): Promise<string> 
 
   try {
     // 3. Intent Classification via Gemini
+    const openai = createOpenAIClient(user.settings?.openrouter_api_key);
+    
     const systemPrompt = `Você é o orquestrador do Brazeo.IA.
 Sua função é analisar a mensagem do usuário e classificar a intenção em uma das seguintes categorias:
 - criar_lembrete: O usuário quer ser lembrado de algo, agendar uma tarefa ou aviso.
@@ -148,7 +152,7 @@ Gere a resposta final para enviar ao usuário no WhatsApp. Nunca saia do seu per
     } catch (e) { /* ignore db error */ }
 
     // 7. Send via Evolution API (Fire and forget)
-    sendWhatsAppMessage(phone, replyText).catch(console.error);
+    sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
 
     return replyText;
 
@@ -158,10 +162,10 @@ Gere a resposta final para enviar ao usuário no WhatsApp. Nunca saia do seu per
   }
 }
 
-async function sendWhatsAppMessage(phone: string, text: string) {
-  const apiUrl = process.env.EVOLUTION_API_URL;
-  const apiKey = process.env.EVOLUTION_API_KEY;
-  const instance = process.env.EVOLUTION_INSTANCE_NAME;
+async function sendWhatsAppMessage(phone: string, text: string, settings: any) {
+  const apiUrl = settings?.evolution_api_url || process.env.EVOLUTION_API_URL;
+  const apiKey = settings?.evolution_api_key || process.env.EVOLUTION_API_KEY;
+  const instance = settings?.evolution_instance_name || process.env.EVOLUTION_INSTANCE_NAME;
 
   if (!apiUrl || !apiKey || !instance) {
     console.warn('Evolution API credentials not configured. Skipping message send.');
