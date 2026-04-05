@@ -20,7 +20,7 @@ export async function saveSettingsAction(formData: FormData) {
       agent_tone,
       agent_instructions,
       updated_at: new Date().toISOString()
-    });
+    }, { onConflict: 'id' });
 
   if (error) {
     console.error("Erro ao salvar configs:", error);

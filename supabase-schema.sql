@@ -55,12 +55,27 @@ CREATE TABLE broadcasts (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: settings (Configurações Globais do Agente)
+CREATE TABLE IF NOT EXISTS settings (
+  id integer PRIMARY KEY DEFAULT 1,
+  agent_name text NOT NULL DEFAULT 'Brazeo.IA',
+  agent_tone text NOT NULL DEFAULT 'friendly',
+  agent_instructions text,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
+);
+
+-- Insert default row
+INSERT INTO settings (id, agent_name, agent_tone, agent_instructions)
+VALUES (1, 'Brazeo.IA', 'friendly', 'Você é um assistente virtual prestativo, educado e focado em resolver os problemas do cliente de forma rápida.')
+ON CONFLICT (id) DO NOTHING;
+
 -- Habilitar RLS em todas as tabelas
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE broadcasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS (Apenas Service Role pode acessar tudo por padrão, anon não tem acesso)
 -- Se precisar de acesso autenticado via painel admin, crie políticas para auth.uid()
@@ -69,3 +84,4 @@ CREATE POLICY "Allow full access to authenticated users" ON messages FOR ALL USI
 CREATE POLICY "Allow full access to authenticated users" ON reminders FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON tasks FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON broadcasts FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow full access to authenticated users" ON settings FOR ALL USING (auth.role() = 'authenticated');
