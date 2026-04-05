@@ -25,7 +25,8 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
-import { ModeToggle } from "@/components/mode-toggle"
+import { logout } from "@/app/login/actions"
+import { useTransition } from "react"
 
 const data = {
   user: {
@@ -68,6 +69,13 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const [isPending, startTransition] = useTransition();
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      await logout();
+    });
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -148,9 +156,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between p-2">
-              <ModeToggle />
-            </div>
+            <SidebarMenuButton onClick={handleLogout} disabled={isPending} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+              <LogOut className="size-4" />
+              <span>{isPending ? "Saindo..." : "Sair"}</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
