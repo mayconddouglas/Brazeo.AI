@@ -38,9 +38,10 @@ export default async function ConversationsPage({
 
   // Filtrar apenas usuários com mensagens e ordenar pela data da última mensagem
   const activeConversations = usersWithLastMessage
-    .filter((u) => u.lastMessage)
+    .filter((u) => u.lastMessage !== null)
     .sort((a, b) => {
-      return new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime();
+      // Usamos ! para garantir ao TS que não é nulo, pois já filtramos acima
+      return new Date(b.lastMessage!.created_at).getTime() - new Date(a.lastMessage!.created_at).getTime();
     });
 
   const activeUserId = selectedUserId || activeConversations[0]?.id;
@@ -84,15 +85,15 @@ export default async function ConversationsPage({
                         <div className="font-semibold">{user.name || "Sem Nome"}</div>
                       </div>
                       <div className="ml-auto text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(user.lastMessage.created_at), { addSuffix: true, locale: ptBR })}
+                        {user.lastMessage ? formatDistanceToNow(new Date(user.lastMessage.created_at), { addSuffix: true, locale: ptBR }) : ""}
                       </div>
                     </div>
-                    {user.lastMessage.intent && (
+                    {user.lastMessage?.intent && (
                       <div className="text-xs font-medium">{user.lastMessage.intent}</div>
                     )}
                   </div>
                   <div className="line-clamp-2 text-xs text-muted-foreground">
-                    {user.lastMessage.content}
+                    {user.lastMessage?.content}
                   </div>
                 </Link>
               ))}
