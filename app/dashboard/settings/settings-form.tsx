@@ -6,27 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { saveSettingsAction } from "./actions";
 
 export function SettingsForm({ initialData }: { initialData: any }) {
-  const [tone, setTone] = useState(initialData?.agent_tone || "friendly");
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsPending(true);
+    
     const formData = new FormData(e.currentTarget);
-    formData.append("agent_tone", tone);
 
-    startTransition(async () => {
-      const res = await saveSettingsAction(formData);
-      if (res.error) {
-        toast.error(res.error);
-      } else {
-        toast.success("Configurações do Agente salvas com sucesso!");
-      }
-    });
+    const res = await saveSettingsAction(formData);
+    
+    setIsPending(false);
+    
+    if (res.error) {
+      toast.error(res.error);
+    } else {
+      toast.success("Configurações do Agente salvas com sucesso!");
+    }
   };
 
   return (
@@ -50,7 +51,7 @@ export function SettingsForm({ initialData }: { initialData: any }) {
           
           <div className="flex flex-col gap-2">
             <Label>Tom de Resposta</Label>
-            <Select value={tone} onValueChange={setTone}>
+            <Select name="agent_tone" defaultValue={initialData?.agent_tone || "friendly"}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o tom" />
               </SelectTrigger>
