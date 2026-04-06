@@ -3,6 +3,8 @@ import { runAgent } from '@/orchestrator/agent-runner';
 import OpenAI, { toFile } from 'openai';
 import { getServiceSupabase } from '@/lib/supabase';
 
+const rateLimit = new Map<string, { count: number; resetTime: number }>();
+
 async function transcribeAudio(base64: string, apiKey: string) {
   const isGroq = apiKey.startsWith('gsk_');
   
@@ -25,6 +27,30 @@ async function transcribeAudio(base64: string, apiKey: string) {
 
 export async function POST(req: Request) {
   try {
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    const reqSecret = req.headers.get('x-webhook-secret');
+
+    if (!webhookSecret || reqSecret !== webhookSecret) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const now = Date.now();
+    const limit = rateLimit.get(ip);
+
+    if (limit) {
+      if (now > limit.resetTime) {
+        rateLimit.set(ip, { count: 1, resetTime: now + 60000 });
+      } else {
+        limit.count++;
+        if (limit.count > 30) {
+          return NextResponse.json({ message: 'Too Many Requests' }, { status: 429 });
+        }
+      }
+    } else {
+      rateLimit.set(ip, { count: 1, resetTime: now + 60000 });
+    }
+
     const body = await req.json();
     
     // Evolution API typically sends messages in this format
