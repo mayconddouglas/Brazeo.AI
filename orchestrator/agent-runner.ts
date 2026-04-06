@@ -88,11 +88,16 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     const agentTone = user.settings?.agent_tone || 'friendly';
     const agentInstructions = user.settings?.agent_instructions ? `Regras Adicionais de Comportamento:\n${user.settings.agent_instructions}\n\n` : '';
 
+    // Extrai as informações de memória (perfil do usuário) salvas no banco de dados
+    const userProfile = user.preferences?.perfil && Array.isArray(user.preferences.perfil) && user.preferences.perfil.length > 0 
+      ? `\n[MEMÓRIA DE LONGO PRAZO DO USUÁRIO]\nVocê já sabe as seguintes informações sobre este usuário:\n${user.preferences.perfil.map((p: string) => `- ${p}`).join('\n')}\nUse essas informações para personalizar seu atendimento e não pergunte novamente o que você já sabe.\n` 
+      : '';
+
     const systemPrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
 O seu tom de resposta deve ser estritamente: ${agentTone}.
 ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
 
-${agentInstructions}
+${agentInstructions}${userProfile}
 A data e hora atual é: ${new Date().toISOString()}
 
 Seu objetivo é ajudar o usuário da melhor forma possível, utilizando as ferramentas disponíveis quando necessário.
@@ -148,6 +153,20 @@ Nunca saia do seu personagem.`;
           parameters: {
             type: 'object',
             properties: {},
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'memorizar_informacao',
+          description: 'Salva uma informação importante sobre o usuário (ex: nome, idade, onde mora, filhos, gostos, trabalho, etc) para a memória de longo prazo do assistente. Use isso sempre que o usuário contar um fato relevante sobre si mesmo que possa ser útil no futuro.',
+          parameters: {
+            type: 'object',
+            properties: {
+              fato: { type: 'string', description: 'A frase ou fato que descreve a informação do usuário. Ex: "Mora em São Paulo", "Tem 2 cachorros", "Trabalha como programador". Seja claro e conciso.' }
+            },
+            required: ['fato']
           }
         }
       }
