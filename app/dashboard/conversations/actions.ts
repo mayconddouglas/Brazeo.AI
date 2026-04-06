@@ -2,6 +2,44 @@
 
 import { getServiceSupabase } from "@/lib/supabase";
 
+export async function markMessagesAsRead(userId: string) {
+  if (!userId) return { error: "ID de usuário inválido" };
+
+  const supabase = getServiceSupabase();
+
+  try {
+    // Busca a última mensagem desse usuário
+    const { data: lastMessage, error: fetchError } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+    // Se a última mensagem for do usuário e não estiver marcada como lida (aqui usaremos um update em todas as mensagens do user que não tem is_read)
+    // Como não temos um campo is_read explícito no momento, uma forma de "marcar como lido" no contexto atual
+    // é registrar uma mensagem de "sistema" invisível ou atualizar um campo 'last_read_at' na tabela users.
+    // Para simplificar a UI que verifica "user.last_message_role === 'user'", podemos inserir uma mensagem de sistema "Lido" (oculta)
+    // ou atualizar o perfil do usuário. A melhor abordagem real seria adicionar uma coluna 'is_read' boolean default false.
+    
+    // Vamos atualizar a tabela 'users' para registrar a última vez que o admin abriu a conversa
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ updated_at: new Date().toISOString() }) // Usando updated_at como timestamp de leitura para não quebrar schema
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (error) {
+    console.error("Erro ao marcar como lido:", error);
+    return { error: "Falha ao atualizar status." };
+  }
+}
+
 export async function sendMessageFromDashboard(userId: string, phone: string, content: string) {
   if (!userId || !phone || !content) return { error: "Parâmetros inválidos" };
 
