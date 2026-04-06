@@ -37,7 +37,7 @@ const data = {
   navMain: [
     {
       title: "Visão Geral",
-      url: "/dashboard/analytics",
+      url: "/dashboard",
       icon: BarChart3,
     },
   ],

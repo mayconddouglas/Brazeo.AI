@@ -28,6 +28,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Top Cards: KPIs Principais */}
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -69,11 +70,62 @@ export default async function DashboardPage() {
         </Card>
       </div>
       
+      {/* Middle Row: Gráficos e Analytics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="col-span-4">
           <DashboardChart data={[]} />
         </div>
+        
         <Card className="col-span-3 flex flex-col">
+          <CardHeader>
+            <CardTitle>Uso por Intenção</CardTitle>
+            <CardDescription>Distribuição dos comandos reconhecidos pela IA.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center">
+            <div className="space-y-5">
+              <div className="flex items-center">
+                <div className="w-32 text-sm font-medium truncate">criar_lembrete</div>
+                <div className="flex-1 ml-4">
+                  <div className="h-2 w-[75%] rounded-full bg-primary"></div>
+                </div>
+                <div className="ml-4 text-sm text-muted-foreground">45%</div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-32 text-sm font-medium truncate">resposta_livre</div>
+                <div className="flex-1 ml-4">
+                  <div className="h-2 w-[45%] rounded-full bg-primary/80"></div>
+                </div>
+                <div className="ml-4 text-sm text-muted-foreground">25%</div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-32 text-sm font-medium truncate">resumir_texto</div>
+                <div className="flex-1 ml-4">
+                  <div className="h-2 w-[30%] rounded-full bg-primary/60"></div>
+                </div>
+                <div className="ml-4 text-sm text-muted-foreground">15%</div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-32 text-sm font-medium truncate">consultor_rapido</div>
+                <div className="flex-1 ml-4">
+                  <div className="h-2 w-[20%] rounded-full bg-primary/40"></div>
+                </div>
+                <div className="ml-4 text-sm text-muted-foreground">10%</div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-32 text-sm font-medium truncate">planejar_semana</div>
+                <div className="flex-1 ml-4">
+                  <div className="h-2 w-[10%] rounded-full bg-primary/20"></div>
+                </div>
+                <div className="ml-4 text-sm text-muted-foreground">5%</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Row: Interações e Taxa de Sucesso */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4 flex flex-col">
           <CardHeader>
             <CardTitle>Últimas Interações</CardTitle>
             <CardDescription>Mensagens recentes recebidas pelo assistente.</CardDescription>
@@ -98,7 +150,7 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        <p className="text-xs text-muted-foreground truncate max-w-[250px] md:max-w-[350px]">
                           {msg.content}
                         </p>
                         {msg.intent && (
@@ -118,6 +170,19 @@ export default async function DashboardPage() {
                 </div>
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Taxa de Sucesso</CardTitle>
+            <CardDescription>Eficácia geral da inteligência artificial.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-16 h-[calc(100%-80px)]">
+            <div className="text-7xl font-bold text-green-500">94%</div>
+            <p className="mt-4 text-sm text-muted-foreground text-center">
+              das intenções foram compreendidas<br/>e respondidas corretamente
+            </p>
           </CardContent>
         </Card>
       </div>
