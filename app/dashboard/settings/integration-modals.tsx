@@ -111,12 +111,12 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
           <DialogHeader>
             <DialogTitle>APIs de Inteligência Artificial</DialogTitle>
             <DialogDescription>
-              Configure o OpenRouter (Textos), OpenAI/Groq (Áudios via Whisper) e Tavily (Pesquisa na Internet em tempo real).
+              Configure o OpenRouter (Textos), OpenAI (Base de Conhecimento), Groq (Áudios via Whisper) e Tavily (Pesquisa).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="openrouter_api_key">OpenRouter API Key (Cérebro)</Label>
+              <Label htmlFor="openrouter_api_key">OpenRouter API Key (Cérebro Principal)</Label>
               <Input 
                 id="openrouter_api_key" 
                 name="openrouter_api_key" 
@@ -126,14 +126,26 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="openai_api_key">Groq / OpenAI API Key (Áudios)</Label>
+              <Label htmlFor="openai_api_key">OpenAI API Key (Embeddings / RAG)</Label>
               <Input 
                 id="openai_api_key" 
                 name="openai_api_key" 
                 type="password"
-                placeholder="gsk_... ou sk-..."
+                placeholder="sk-proj-..."
                 defaultValue={initialData?.openai_api_key || ""}
               />
+              <p className="text-[11px] text-muted-foreground mt-1 leading-tight">Obrigatório para converter PDFs e textos na Base de Conhecimento. Chaves do Groq não funcionam aqui.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="groq_api_key">Groq API Key (Áudios Rápidos)</Label>
+              <Input 
+                id="groq_api_key" 
+                name="groq_api_key" 
+                type="password"
+                placeholder="gsk_..."
+                defaultValue={initialData?.groq_api_key || ""}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1 leading-tight">Opcional, mas recomendado para transcrever áudios do WhatsApp instantaneamente e de graça.</p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="tavily_api_key">Tavily API Key (Internet)</Label>
@@ -144,7 +156,6 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
                 placeholder="tvly-..."
                 defaultValue={initialData?.tavily_api_key || ""}
               />
-              <p className="text-xs text-muted-foreground mt-1">Permite que o agente pesquise no Google em tempo real. Crie uma conta gratuita em tavily.com</p>
             </div>
           </div>
           <DialogFooter>

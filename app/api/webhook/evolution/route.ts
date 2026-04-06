@@ -60,8 +60,10 @@ export async function POST(req: Request) {
       if (base64Audio) {
         try {
           const supabase = getServiceSupabase();
-          const { data: settings } = await supabase.from('settings').select('openai_api_key').eq('id', 1).single();
-          const apiKey = settings?.openai_api_key || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY;
+          const { data: settings } = await supabase.from('settings').select('openai_api_key, groq_api_key').eq('id', 1).single();
+          
+          // Prioritize Groq for audio transcription because it's faster and free, fallback to OpenAI
+          const apiKey = settings?.groq_api_key || settings?.openai_api_key || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
 
           if (apiKey) {
             const transcript = await transcribeAudio(base64Audio, apiKey);
