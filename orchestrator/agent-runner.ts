@@ -1,6 +1,6 @@
 import { getServiceSupabase } from '@/lib/supabase';
 import OpenAI from 'openai';
-import { executeDirective } from './executor';
+import { executeTool } from './executor';
 
 // Initialize base OpenRouter helper function to create dynamic instances
 const createOpenAIClient = (apiKey: string | undefined) => {
@@ -17,7 +17,8 @@ const createOpenAIClient = (apiKey: string | undefined) => {
 export async function runAgent(phone: string, content: string): Promise<string> {
   const supabase = getServiceSupabase();
   let user: any = { id: 'mock-user-id', status: 'active', phone };
-  let formattedHistory = '';
+  let history: any[] = [];
+  let userMessageId: string | null = null;
 
   try {
     // 1. Identify User
@@ -48,23 +49,27 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     // Update last seen
     await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
 
-    // Save user message
-    await supabase.from('messages').insert([{
+    // Save user message and get its ID
+    const { data: insertedMessage } = await supabase.from('messages').insert([{
       user_id: user.id,
       role: 'user',
       content: content
-    }]);
+    }]).select('id').single();
+    
+    if (insertedMessage) {
+      userMessageId = insertedMessage.id;
+    }
 
     // 2. Load Context (last 10 messages)
-    const { data: history } = await supabase
+    const { data: historyData } = await supabase
       .from('messages')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(10);
       
-    if (history) {
-      formattedHistory = history.reverse().map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.content}`).join('\n');
+    if (historyData) {
+      history = historyData.reverse();
     }
     
     // Load agent settings
@@ -77,72 +82,136 @@ export async function runAgent(phone: string, content: string): Promise<string> 
   }
 
   try {
-    // 3. Intent Classification via Gemini
     const openai = createOpenAIClient(user.settings?.openrouter_api_key);
     
-    const systemPrompt = `Você é o orquestrador do Brazeo.IA.
-Sua função é analisar a mensagem do usuário e classificar a intenção em uma das seguintes categorias:
-- criar_lembrete: O usuário quer ser lembrado de algo, agendar uma tarefa ou aviso.
-- planejar_semana: O usuário quer organizar a semana ou listar tarefas para a semana.
-- resumir_texto: O usuário enviou um texto longo e quer um resumo.
-- consultor_rapido: O usuário está fazendo uma pergunta prática, pedindo conselho, cálculo, etc.
-- resposta_livre: Qualquer outra interação, saudação, ou conversa geral.
-
-Histórico recente:
-${formattedHistory}
-
-Mensagem atual do usuário: "${content}"
-
-Responda APENAS com o nome da intenção (ex: criar_lembrete).`;
-
-    const response = await openai.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [{ role: 'user', content: systemPrompt }],
-      temperature: 0.1,
-    });
-
-    const intent = response.choices[0].message?.content?.trim().toLowerCase() || 'resposta_livre';
-    
-    try {
-      // Update the message with the classified intent
-      await supabase.from('messages')
-        .update({ intent })
-        .eq('user_id', user.id)
-        .eq('content', content)
-        .eq('role', 'user')
-        .order('created_at', { ascending: false })
-        .limit(1);
-    } catch (e) { /* ignore db error */ }
-
-    // 4 & 5. Execute Directive
-    const result = await executeDirective(intent, user, content, formattedHistory);
-
-    // 6. Generate Final Response
     const agentName = user.settings?.agent_name || 'Brazeo.IA';
     const agentTone = user.settings?.agent_tone || 'friendly';
     const agentInstructions = user.settings?.agent_instructions ? `Regras Adicionais de Comportamento:\n${user.settings.agent_instructions}\n\n` : '';
 
-    const responsePrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
+    const systemPrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
 O seu tom de resposta deve ser estritamente: ${agentTone}.
 ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
 
 ${agentInstructions}
-Intenção identificada na mensagem do cliente: ${intent}
-Resultado da execução (dados de sistema): ${JSON.stringify(result)}
+A data e hora atual é: ${new Date().toISOString()}
 
-Mensagem atual do usuário: "${content}"
+Seu objetivo é ajudar o usuário da melhor forma possível, utilizando as ferramentas disponíveis quando necessário.
+Nunca saia do seu personagem.`;
 
-Gere a resposta final para enviar ao usuário no WhatsApp. Nunca saia do seu personagem.`;
+    const messages: any[] = [{ role: 'system', content: systemPrompt }];
 
-    const finalResponse = await openai.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
-      messages: [{ role: 'user', content: responsePrompt }],
+    // Inject history (which already includes the current message since we fetched it after inserting)
+    history.forEach(m => {
+      // Map database roles to OpenAI roles. If unknown, default to 'user'
+      const role = m.role === 'assistant' ? 'assistant' : 'user';
+      messages.push({ role, content: m.content });
     });
 
-    const replyText = finalResponse.choices[0].message?.content?.trim() || 'Desculpe, não consegui processar sua solicitação agora.';
+    // If for some reason history is empty, push the current message
+    if (history.length === 0) {
+      messages.push({ role: 'user', content: content });
+    }
 
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'criar_lembrete',
+          description: 'Cria e agenda um lembrete ou tarefa para o usuário. Use isso sempre que o usuário pedir para ser lembrado de algo, agendar um compromisso ou criar uma tarefa.',
+          parameters: {
+            type: 'object',
+            properties: {
+              task: { type: 'string', description: 'A descrição detalhada da tarefa ou lembrete.' },
+              scheduled_at: { type: 'string', description: `A data e hora do lembrete em formato ISO 8601 (ex: 2026-04-05T15:00:00Z). Calcule isso com base na data atual.` },
+              recurrence: { type: 'string', enum: ['daily', 'weekly'], description: 'A recorrência do lembrete, apenas se o usuário especificar explicitamente.' }
+            },
+            required: ['task', 'scheduled_at']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'planejar_semana',
+          description: 'Retorna a lista de tarefas pendentes do usuário. Use isso quando o usuário pedir para organizar a semana, ver as tarefas da semana ou planejar os próximos dias.',
+          parameters: {
+            type: 'object',
+            properties: {},
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'resumir_texto',
+          description: 'Ativa a ferramenta de resumo. Use isso quando o usuário enviar um texto longo e pedir para resumi-lo.',
+          parameters: {
+            type: 'object',
+            properties: {},
+          }
+        }
+      }
+    ];
+
+    // 3. First Call to LLM with Tools
+    const response = await openai.chat.completions.create({
+      model: 'openai/gpt-4o-mini',
+      messages: messages,
+      tools: tools as any,
+      tool_choice: 'auto',
+    });
+
+    const responseMessage = response.choices[0].message;
+    let replyText = responseMessage.content || '';
+    let intent = 'resposta_livre';
+
+    // 4. Handle Tool Calls
+    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+      messages.push(responseMessage);
+      
+      for (const toolCall of responseMessage.tool_calls) {
+        if (toolCall.type !== 'function') continue;
+        
+        const functionName = toolCall.function.name;
+        intent = functionName; // Track the primary intent based on the tool called
+        
+        let functionArgs = {};
+        try {
+          functionArgs = JSON.parse(toolCall.function.arguments || '{}');
+        } catch (e) {
+          console.error("Error parsing tool arguments", e);
+        }
+        
+        // Execute the actual function
+        const functionResponse = await executeTool(functionName, functionArgs, user);
+        
+        messages.push({
+          tool_call_id: toolCall.id,
+          role: 'tool',
+          name: functionName,
+          content: JSON.stringify(functionResponse),
+        });
+      }
+      
+      // 5. Second Call to get the final response based on tool results
+      const secondResponse = await openai.chat.completions.create({
+        model: 'openai/gpt-4o-mini',
+        messages: messages,
+      });
+      
+      replyText = secondResponse.choices[0].message?.content?.trim() || 'Desculpe, ocorreu um erro ao processar a ferramenta.';
+    }
+
+    if (!replyText) {
+       replyText = 'Desculpe, não consegui processar sua solicitação agora.';
+    }
+
+    // 6. Update Intent & Save Assistant Message
     try {
-      // Save assistant message
+      if (userMessageId && intent !== 'resposta_livre') {
+        await supabase.from('messages').update({ intent }).eq('id', userMessageId);
+      }
+
       await supabase.from('messages').insert([{
         user_id: user.id,
         role: 'assistant',
