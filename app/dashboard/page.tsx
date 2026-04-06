@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Users, MessageSquare, Send, Clock, TrendingUp, Activity, ArrowUpRight } from "lucide-react";
+import { Users, MessageSquare, Send, Clock, TrendingUp, TrendingDown, Activity, ArrowUpRight } from "lucide-react";
 import { getServiceSupabase } from "@/lib/supabase";
 import { DashboardChart } from "@/components/dashboard-chart";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,7 +14,43 @@ export default async function DashboardPage() {
   const supabase = getServiceSupabase();
 
   // Fetch basic stats
-  const { count: usersCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+  const { data: usersData } = await supabase.from('users').select('created_at');
+  const usersCount = usersData?.length || 0;
+
+  // Calculate users growth (last 30 days vs previous 30 days)
+  const now = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+  let currentPeriodUsers = 0;
+  let previousPeriodUsers = 0;
+
+  usersData?.forEach(u => {
+    if (u.created_at) {
+      const createdDate = new Date(u.created_at);
+      if (createdDate >= thirtyDaysAgo) {
+        currentPeriodUsers++;
+      } else if (createdDate >= sixtyDaysAgo && createdDate < thirtyDaysAgo) {
+        previousPeriodUsers++;
+      }
+    }
+  });
+
+  let usersGrowthStr = "Novo";
+  let usersGrowthIsPositive = true;
+
+  if (previousPeriodUsers > 0) {
+    const growthVal = ((currentPeriodUsers - previousPeriodUsers) / previousPeriodUsers) * 100;
+    usersGrowthIsPositive = growthVal >= 0;
+    usersGrowthStr = `${growthVal > 0 ? '+' : ''}${growthVal.toFixed(1)}%`;
+  } else if (currentPeriodUsers === 0 && previousPeriodUsers === 0) {
+    usersGrowthStr = "0%";
+    usersGrowthIsPositive = true;
+  }
+
   const { count: messagesCount } = await supabase.from('messages').select('*', { count: 'exact', head: true });
   const { count: broadcastsCount } = await supabase.from('broadcasts').select('*', { count: 'exact', head: true }).eq('status', 'sent');
   const { count: remindersActive } = await supabase.from('reminders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
@@ -61,7 +97,6 @@ export default async function DashboardPage() {
 
   let currentWeekCount = 0;
   let previousWeekCount = 0;
-  const now = new Date();
 
   userMessages?.forEach(m => {
     if (m.intent) {
@@ -140,8 +175,14 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-bold tracking-tight">{usersCount || 0}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="h-3 w-3 mr-1 text-emerald-500" />
-              <span className="text-emerald-500 font-medium">+12%</span>&nbsp;este mês
+              {usersGrowthIsPositive ? (
+                <TrendingUp className="h-3 w-3 mr-1 text-emerald-500" />
+              ) : (
+                <TrendingDown className="h-3 w-3 mr-1 text-red-500" />
+              )}
+              <span className={`${usersGrowthIsPositive ? 'text-emerald-500' : 'text-red-500'} font-medium`}>
+                {usersGrowthStr}
+              </span>&nbsp;este mês
             </p>
           </CardContent>
         </Card>
