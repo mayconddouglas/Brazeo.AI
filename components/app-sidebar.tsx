@@ -60,6 +60,11 @@ const data = {
   ],
   navSettings: [
     {
+      title: "Base de Conhecimento",
+      url: "/dashboard/knowledge",
+      icon: GalleryVerticalEnd,
+    },
+    {
       title: "Configurações",
       url: "/dashboard/settings",
       icon: Settings2,
