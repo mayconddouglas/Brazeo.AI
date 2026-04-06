@@ -28,7 +28,7 @@ export async function saveEvolutionKeysAction(formData: FormData) {
             enabled: true,
             url: webhookUrl,
             byEvents: false,
-            base64: false,
+            base64: true,
             events: ["MESSAGES_UPSERT"],
           },
         }),
@@ -72,17 +72,19 @@ export async function saveOpenRouterKeyAction(formData: FormData) {
   const supabase = getServiceSupabase();
   
   const openrouter_api_key = formData.get("openrouter_api_key") as string;
+  const openai_api_key = formData.get("openai_api_key") as string;
 
   const { error } = await supabase
     .from("settings")
     .update({
       openrouter_api_key: openrouter_api_key || null,
+      openai_api_key: openai_api_key || null,
       updated_at: new Date().toISOString()
     })
     .eq("id", 1);
 
   if (error) {
-    console.error("Erro ao salvar chave do OpenRouter:", error);
+    console.error("Erro ao salvar chaves de IA:", error);
     return { error: `Erro do Banco: ${error.message}` };
   }
 

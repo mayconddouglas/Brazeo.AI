@@ -109,14 +109,14 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>OpenRouter API (IA)</DialogTitle>
+            <DialogTitle>APIs de Inteligência Artificial</DialogTitle>
             <DialogDescription>
-              Insira a sua chave do OpenRouter para ativar a inteligência do agente. O sistema priorizará essa chave em relação à da Vercel.
+              Configure o OpenRouter para gerar os textos do agente (cérebro) e a chave da OpenAI/Groq para processar mensagens de áudio (Whisper).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="openrouter_api_key">API Key</Label>
+              <Label htmlFor="openrouter_api_key">OpenRouter API Key (Textos)</Label>
               <Input 
                 id="openrouter_api_key" 
                 name="openrouter_api_key" 
@@ -125,9 +125,20 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
                 defaultValue={initialData?.openrouter_api_key || ""}
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="openai_api_key">Groq / OpenAI API Key (Áudios)</Label>
+              <Input 
+                id="openai_api_key" 
+                name="openai_api_key" 
+                type="password"
+                placeholder="gsk_... ou sk-..."
+                defaultValue={initialData?.openai_api_key || ""}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Apenas para transcrição de áudio via Whisper.</p>
+            </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={isPending}>{isPending ? "Salvando..." : "Salvar Chave"}</Button>
+            <Button type="submit" disabled={isPending}>{isPending ? "Salvando..." : "Salvar Chaves"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
