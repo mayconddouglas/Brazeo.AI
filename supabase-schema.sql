@@ -1,6 +1,9 @@
 -- Habilitar a extensão pgcrypto para gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Habilitar a extensão pgvector para similaridade vetorial (RAG)
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Tabela: users
 CREATE TABLE users (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,6 +58,44 @@ CREATE TABLE broadcasts (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: knowledge_base (RAG / Embeddings)
+CREATE TABLE knowledge_base (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content       TEXT NOT NULL,               -- o pedaço do texto (chunk)
+  embedding     vector(1536),                -- vetor matemático da OpenAI (text-embedding-3-small)
+  metadata      JSONB DEFAULT '{}',          -- titulo, link, tag, autor
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Cria um índice HNSW para busca vetorial muito rápida em bases gigantes
+CREATE INDEX ON knowledge_base USING hnsw (embedding vector_cosine_ops);
+
+-- Função de Busca por Similaridade (RPC)
+CREATE OR REPLACE FUNCTION match_knowledge (
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int
+)
+RETURNS TABLE (
+  id UUID,
+  content TEXT,
+  metadata JSONB,
+  similarity float
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT
+    knowledge_base.id,
+    knowledge_base.content,
+    knowledge_base.metadata,
+    1 - (knowledge_base.embedding <=> query_embedding) AS similarity
+  FROM knowledge_base
+  WHERE 1 - (knowledge_base.embedding <=> query_embedding) > match_threshold
+  ORDER BY knowledge_base.embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
 -- Tabela: settings (Configurações Globais do Agente)
 CREATE TABLE IF NOT EXISTS settings (
   id integer PRIMARY KEY DEFAULT 1,
@@ -81,6 +122,7 @@ ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE broadcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS (Apenas Service Role pode acessar tudo por padrão, anon não tem acesso)
 -- Se precisar de acesso autenticado via painel admin, crie políticas para auth.uid()
@@ -90,3 +132,4 @@ CREATE POLICY "Allow full access to authenticated users" ON reminders FOR ALL US
 CREATE POLICY "Allow full access to authenticated users" ON tasks FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON broadcasts FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON settings FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow full access to authenticated users" ON knowledge_base FOR ALL USING (auth.role() = 'authenticated');
