@@ -9,6 +9,45 @@ export async function saveEvolutionKeysAction(formData: FormData) {
   const evolution_api_url = formData.get("evolution_api_url") as string;
   const evolution_api_key = formData.get("evolution_api_key") as string;
   const evolution_instance_name = formData.get("evolution_instance_name") as string;
+  const siteUrl = formData.get("siteUrl") as string;
+
+  // Se o usuário preencheu os 3, tentamos configurar o Webhook na Evolution
+  if (evolution_api_url && evolution_api_key && evolution_instance_name && siteUrl) {
+    try {
+      const webhookUrl = `${siteUrl.replace(/\/$/, '')}/api/webhook/evolution`;
+      const url = `${evolution_api_url.replace(/\/$/, '')}/webhook/set/${evolution_instance_name}`;
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": evolution_api_key,
+        },
+        body: JSON.stringify({
+          webhook: {
+            enabled: true,
+            url: webhookUrl,
+            byEvents: false,
+            base64: false,
+            events: ["MESSAGES_UPSERT"],
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        let errorData = await response.text();
+        try {
+          const parsed = JSON.parse(errorData);
+          if (parsed.message) errorData = parsed.message;
+        } catch {}
+        console.error("Evolution Webhook Set Error:", errorData);
+        return { error: `Erro na Evolution API: ${errorData}` };
+      }
+    } catch (e: any) {
+      console.error("Evolution Webhook fetch error:", e);
+      return { error: `Falha ao conectar com a Evolution API: ${e.message}` };
+    }
+  }
 
   const { error } = await supabase
     .from("settings")

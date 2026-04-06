@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { saveEvolutionKeysAction, saveOpenRouterKeyAction } from "./actions";
 
-export function EvolutionModal({ initialData }: { initialData: any }) {
+export function EvolutionModal({ initialData, siteUrl }: { initialData: any, siteUrl: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
@@ -24,12 +24,13 @@ export function EvolutionModal({ initialData }: { initialData: any }) {
     e.preventDefault();
     setIsPending(true);
     const formData = new FormData(e.currentTarget);
+    formData.append("siteUrl", siteUrl);
     const res = await saveEvolutionKeysAction(formData);
     setIsPending(false);
     if (res.error) {
       toast.error(res.error);
     } else {
-      toast.success("Integração Evolution API salva!");
+      toast.success("Integração salva e Webhook configurado!");
       setIsOpen(false);
     }
   };
@@ -42,7 +43,7 @@ export function EvolutionModal({ initialData }: { initialData: any }) {
           <DialogHeader>
             <DialogTitle>Evolution API (WhatsApp)</DialogTitle>
             <DialogDescription>
-              Insira as credenciais da sua instância da Evolution API. O sistema priorizará essas chaves em relação às variáveis da Vercel.
+              Insira as credenciais da sua instância da Evolution API. Nós testaremos a conexão e configuraremos automaticamente o Webhook para você.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

@@ -43,7 +43,7 @@ export default async function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <WebhookModal siteUrl={siteUrl} />
-                  <EvolutionModal initialData={settings} />
+                  <EvolutionModal initialData={settings} siteUrl={siteUrl} />
                 </div>
               </div>
               <div className="flex items-center justify-between border-b pb-4">
