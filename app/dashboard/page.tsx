@@ -27,6 +27,50 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(6);
 
+  // Fetch intents for "Uso por Intenção" and "Taxa de Sucesso"
+  const { data: userMessages } = await supabase
+    .from('messages')
+    .select('intent')
+    .eq('role', 'user');
+
+  const totalUserMessages = userMessages?.length || 0;
+  
+  // Calculate success rate (messages that have an intent recognized, i.e., intent is not null and not 'fallback' or 'desconhecida')
+  let successRate = 0;
+  if (totalUserMessages > 0 && userMessages) {
+    const successfulMessages = userMessages.filter(m => m.intent && m.intent !== 'fallback' && m.intent !== 'desconhecida').length;
+    successRate = Math.round((successfulMessages / totalUserMessages) * 100);
+  } else {
+    // Se não houver mensagens, mostrar 100% ou 0%. Vamos manter 100% como otimismo ou 0.
+    successRate = 0;
+  }
+
+  // Calculate intent usage
+  const intentCounts: Record<string, number> = {};
+  userMessages?.forEach(m => {
+    if (m.intent) {
+      intentCounts[m.intent] = (intentCounts[m.intent] || 0) + 1;
+    }
+  });
+
+  // Sort intents by count descending and take top 5
+  const topIntents = Object.entries(intentCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([intent, count]) => ({
+      name: intent,
+      percentage: Math.round((count / totalUserMessages) * 100)
+    }));
+
+  // Helper to format intent names
+  const formatIntentName = (intent: string) => {
+    return intent.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  // Calcula o valor do SVG Gauge (Circunferência total = 289, dashoffset vai de 289 (0%) até 0 (100%))
+  const gaugeCircumference = 289;
+  const gaugeOffset = gaugeCircumference - (successRate / 100) * gaugeCircumference;
+
   return (
     <div className="flex flex-col gap-6 md:gap-8">
       {/* Header Greeting */}
@@ -115,45 +159,22 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-center">
             <div className="space-y-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Agendar / Lembrete</span>
-                  <span className="text-sm font-semibold text-primary">45%</span>
+              {topIntents.length > 0 ? (
+                topIntents.map((intent, index) => (
+                  <div key={index} className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium truncate pr-4">{formatIntentName(intent.name)}</span>
+                      <span className="text-sm font-semibold text-primary">{intent.percentage}%</span>
+                    </div>
+                    <Progress value={intent.percentage} className="h-2 bg-muted/50" />
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                  <Activity className="h-8 w-8 mb-2 opacity-20" />
+                  <p className="text-sm">Sem dados suficientes.</p>
                 </div>
-                <Progress value={45} className="h-2 bg-muted/50" />
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Bate-papo Livre</span>
-                  <span className="text-sm font-semibold text-primary">25%</span>
-                </div>
-                <Progress value={25} className="h-2 bg-muted/50" />
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Resumir Texto</span>
-                  <span className="text-sm font-semibold text-primary">15%</span>
-                </div>
-                <Progress value={15} className="h-2 bg-muted/50" />
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Consultoria</span>
-                  <span className="text-sm font-semibold text-primary">10%</span>
-                </div>
-                <Progress value={10} className="h-2 bg-muted/50" />
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Planejamento</span>
-                  <span className="text-sm font-semibold text-primary">5%</span>
-                </div>
-                <Progress value={5} className="h-2 bg-muted/50" />
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -224,16 +245,16 @@ export default async function DashboardPage() {
           <CardContent className="flex flex-col items-center justify-center py-12 h-[calc(100%-80px)] relative z-10">
             <div className="relative flex items-center justify-center h-48 w-48 rounded-full border-8 border-emerald-500/20">
               <svg className="absolute inset-0 h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-emerald-500" strokeDasharray="289" strokeDashoffset="17" strokeLinecap="round" />
+                <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-emerald-500" strokeDasharray="289" strokeDashoffset={gaugeOffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
               </svg>
               <div className="flex flex-col items-center justify-center">
                 <span className="text-5xl font-extrabold tracking-tighter bg-gradient-to-br from-emerald-400 to-emerald-700 bg-clip-text text-transparent">
-                  94%
+                  {successRate}%
                 </span>
               </div>
             </div>
             <div className="mt-8 text-center space-y-1">
-              <p className="font-semibold text-foreground">Excelente Desempenho</p>
+              <p className="font-semibold text-foreground">{successRate > 80 ? 'Excelente Desempenho' : successRate > 50 ? 'Desempenho Regular' : 'Desempenho Baixo'}</p>
               <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
                 das intenções foram compreendidas e respondidas corretamente sem intervenção humana.
               </p>
