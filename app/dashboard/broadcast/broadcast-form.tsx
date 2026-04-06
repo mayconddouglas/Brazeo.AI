@@ -79,12 +79,12 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
           <div className="flex flex-col gap-2">
             <Label>Público Alvo</Label>
             <Select value={target} onValueChange={(val) => setTarget(val || "all")}>
-              <SelectTrigger>
+              <SelectTrigger className="h-10 text-base md:text-sm">
                 <SelectValue placeholder="Selecione o público" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os Usuários Ativos ({activeUsers.length})</SelectItem>
-                <SelectItem value="specific">Usuários Específicos</SelectItem>
+                <SelectItem value="all" className="text-base md:text-sm">Todos os Usuários Ativos ({activeUsers.length})</SelectItem>
+                <SelectItem value="specific" className="text-base md:text-sm">Usuários Específicos</SelectItem>
               </SelectContent>
             </Select>
           </div>
