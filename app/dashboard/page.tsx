@@ -68,6 +68,7 @@ export default async function DashboardPage() {
   };
 
   // Calcula o valor do SVG Gauge (Circunferência total = 289, dashoffset vai de 289 (0%) até 0 (100%))
+  const hasData = totalUserMessages > 0;
   const gaugeCircumference = 289;
   const gaugeOffset = gaugeCircumference - (successRate / 100) * gaugeCircumference;
 
@@ -146,11 +147,11 @@ export default async function DashboardPage() {
       
       {/* Middle Row: Gráficos e Analytics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <div className="col-span-4 flex flex-col">
+        <div className="col-span-full lg:col-span-4 flex flex-col">
           <DashboardChart data={[]} />
         </div>
         
-        <Card className="col-span-3 flex flex-col">
+        <Card className="col-span-full lg:col-span-3 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" /> Uso por Intenção
@@ -170,9 +171,10 @@ export default async function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                  <Activity className="h-8 w-8 mb-2 opacity-20" />
-                  <p className="text-sm">Sem dados suficientes.</p>
+                <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
+                  <Activity className="h-10 w-10 mb-3 opacity-20" />
+                  <p className="text-sm font-medium text-foreground/70">Sem dados suficientes.</p>
+                  <p className="text-xs mt-1 max-w-[200px] mx-auto">As intenções aparecerão aqui quando a IA começar a responder.</p>
                 </div>
               )}
             </div>
@@ -182,7 +184,7 @@ export default async function DashboardPage() {
 
       {/* Bottom Row: Interações e Taxa de Sucesso */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 flex flex-col">
+        <Card className="col-span-full lg:col-span-4 flex flex-col">
           <CardHeader>
             <CardTitle>Últimas Interações</CardTitle>
             <CardDescription>Mensagens recentes recebidas pelo assistente nas últimas horas.</CardDescription>
@@ -221,42 +223,70 @@ export default async function DashboardPage() {
                 )
               })}
               {!recentMessages?.length && (
-                <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/20">
+                <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
                   <MessageSquare className="h-10 w-10 mb-3 opacity-20" />
-                  <p className="text-sm font-medium">Nenhuma interação recente.</p>
-                  <p className="text-xs mt-1">Quando os usuários enviarem mensagens, elas aparecerão aqui.</p>
+                  <p className="text-sm font-medium text-foreground/70">Nenhuma interação recente.</p>
+                  <p className="text-xs mt-1 max-w-[250px] mx-auto">Quando os usuários enviarem mensagens, elas aparecerão aqui.</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 relative overflow-hidden bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-background border-emerald-500/20">
-          <div className="absolute -right-10 -top-10 bg-emerald-500/10 h-40 w-40 rounded-full blur-3xl"></div>
-          <div className="absolute -left-10 -bottom-10 bg-primary/10 h-40 w-40 rounded-full blur-3xl"></div>
+        <Card className={`col-span-full lg:col-span-3 relative overflow-hidden bg-gradient-to-br to-background border ${
+          !hasData ? 'from-muted/50 via-muted/20 border-muted' :
+          successRate > 80 ? 'from-emerald-500/10 via-emerald-500/5 border-emerald-500/20' :
+          successRate > 50 ? 'from-amber-500/10 via-amber-500/5 border-amber-500/20' :
+          'from-red-500/10 via-red-500/5 border-red-500/20'
+        }`}>
+          <div className={`absolute -right-10 -top-10 h-40 w-40 rounded-full blur-3xl ${
+            !hasData ? 'bg-muted/50' :
+            successRate > 80 ? 'bg-emerald-500/10' :
+            successRate > 50 ? 'bg-amber-500/10' :
+            'bg-red-500/10'
+          }`}></div>
+          <div className={`absolute -left-10 -bottom-10 h-40 w-40 rounded-full blur-3xl ${
+            !hasData ? 'bg-muted/50' : 'bg-primary/10'
+          }`}></div>
           
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ArrowUpRight className="h-5 w-5 text-emerald-500" />
+              <ArrowUpRight className={`h-5 w-5 ${!hasData ? 'text-muted-foreground' : successRate > 80 ? 'text-emerald-500' : successRate > 50 ? 'text-amber-500' : 'text-red-500'}`} />
               Taxa de Sucesso
             </CardTitle>
             <CardDescription>Eficácia geral da inteligência artificial.</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-12 h-[calc(100%-80px)] relative z-10">
-            <div className="relative flex items-center justify-center h-48 w-48 rounded-full border-8 border-emerald-500/20">
+          <CardContent className="flex flex-col items-center justify-center py-10 flex-1 relative z-10">
+            <div className={`relative flex items-center justify-center h-48 w-48 rounded-full border-8 ${
+              !hasData ? 'border-muted' :
+              successRate > 80 ? 'border-emerald-500/20' :
+              successRate > 50 ? 'border-amber-500/20' :
+              'border-red-500/20'
+            }`}>
               <svg className="absolute inset-0 h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-emerald-500" strokeDasharray="289" strokeDashoffset={gaugeOffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} />
+                <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                  className={!hasData ? 'text-muted-foreground/20' : successRate > 80 ? 'text-emerald-500' : successRate > 50 ? 'text-amber-500' : 'text-red-500'} 
+                  strokeDasharray="289" strokeDashoffset={!hasData ? 289 : gaugeOffset} strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1.5s ease-in-out' }} />
               </svg>
               <div className="flex flex-col items-center justify-center">
-                <span className="text-5xl font-extrabold tracking-tighter bg-gradient-to-br from-emerald-400 to-emerald-700 bg-clip-text text-transparent">
-                  {successRate}%
+                <span className={`text-5xl font-extrabold tracking-tighter bg-gradient-to-br bg-clip-text text-transparent ${
+                  !hasData ? 'from-muted-foreground to-muted-foreground/50' :
+                  successRate > 80 ? 'from-emerald-400 to-emerald-700' :
+                  successRate > 50 ? 'from-amber-400 to-amber-700' :
+                  'from-red-400 to-red-700'
+                }`}>
+                  {hasData ? `${successRate}%` : '--'}
                 </span>
               </div>
             </div>
             <div className="mt-8 text-center space-y-1">
-              <p className="font-semibold text-foreground">{successRate > 80 ? 'Excelente Desempenho' : successRate > 50 ? 'Desempenho Regular' : 'Desempenho Baixo'}</p>
+              <p className="font-semibold text-foreground">
+                {!hasData ? 'Aguardando Interações' : successRate > 80 ? 'Excelente Desempenho' : successRate > 50 ? 'Desempenho Regular' : 'Atenção Necessária'}
+              </p>
               <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
-                das intenções foram compreendidas e respondidas corretamente sem intervenção humana.
+                {!hasData 
+                  ? 'O gráfico será preenchido assim que os usuários interagirem.' 
+                  : 'das intenções foram compreendidas e respondidas corretamente sem intervenção humana.'}
               </p>
             </div>
           </CardContent>
