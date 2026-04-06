@@ -212,6 +212,20 @@ Nunca saia do seu personagem.`;
             required: ['fato']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'pesquisar_internet',
+          description: 'Pesquisa informações atualizadas na internet em tempo real. Use isso quando o usuário perguntar sobre notícias recentes, clima, cotações, ou qualquer assunto que você não tenha certeza e precise buscar no Google.',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'O termo exato que você quer buscar no Google. Seja específico para obter melhores resultados.' }
+            },
+            required: ['query']
+          }
+        }
       }
     ];
 

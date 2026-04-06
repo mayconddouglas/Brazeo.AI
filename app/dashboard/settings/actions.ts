@@ -73,12 +73,14 @@ export async function saveOpenRouterKeyAction(formData: FormData) {
   
   const openrouter_api_key = formData.get("openrouter_api_key") as string;
   const openai_api_key = formData.get("openai_api_key") as string;
+  const tavily_api_key = formData.get("tavily_api_key") as string;
 
   const { error } = await supabase
     .from("settings")
     .update({
       openrouter_api_key: openrouter_api_key || null,
       openai_api_key: openai_api_key || null,
+      tavily_api_key: tavily_api_key || null,
       updated_at: new Date().toISOString()
     })
     .eq("id", 1);

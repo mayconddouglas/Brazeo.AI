@@ -107,6 +107,7 @@ CREATE TABLE IF NOT EXISTS settings (
   evolution_instance_name text,
   openrouter_api_key text,
   openai_api_key text,
+  tavily_api_key text,
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 

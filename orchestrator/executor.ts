@@ -10,8 +10,59 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleResumirTexto();
     case 'memorizar_informacao':
       return await handleMemorizarInformacao(user, args);
+    case 'pesquisar_internet':
+      return await handlePesquisarInternet(user, args);
     default:
       return { error: 'Ferramenta desconhecida' };
+  }
+}
+
+async function handlePesquisarInternet(user: any, args: any) {
+  if (!args.query) {
+    return { error: 'Nenhum termo de pesquisa fornecido.' };
+  }
+
+  const apiKey = user.settings?.tavily_api_key || process.env.TAVILY_API_KEY;
+
+  if (!apiKey) {
+    return { 
+      error: 'A chave da API do Tavily não está configurada no painel. Avise o usuário que você não pode acessar a internet no momento.' 
+    };
+  }
+
+  try {
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: args.query,
+        search_depth: "basic",
+        include_answer: true,
+        include_images: false,
+        include_raw_content: false,
+        max_results: 5,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tavily API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    return {
+      success: true,
+      query: args.query,
+      answer: data.answer,
+      results: data.results.map((r: any) => ({ title: r.title, content: r.content, url: r.url })),
+      instruction: 'Use os resultados e o resumo acima para responder à pergunta do usuário de forma clara e natural. Se os resultados não forem úteis, diga que pesquisou mas não encontrou uma resposta exata.'
+    };
+  } catch (error: any) {
+    console.error('Error searching internet:', error);
+    return { error: `Falha ao pesquisar na internet: ${error.message}` };
   }
 }
 

@@ -111,12 +111,12 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
           <DialogHeader>
             <DialogTitle>APIs de Inteligência Artificial</DialogTitle>
             <DialogDescription>
-              Configure o OpenRouter para gerar os textos do agente (cérebro) e a chave da OpenAI/Groq para processar mensagens de áudio (Whisper).
+              Configure o OpenRouter (Textos), OpenAI/Groq (Áudios via Whisper) e Tavily (Pesquisa na Internet em tempo real).
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="openrouter_api_key">OpenRouter API Key (Textos)</Label>
+              <Label htmlFor="openrouter_api_key">OpenRouter API Key (Cérebro)</Label>
               <Input 
                 id="openrouter_api_key" 
                 name="openrouter_api_key" 
@@ -134,7 +134,17 @@ export function OpenRouterModal({ initialData }: { initialData: any }) {
                 placeholder="gsk_... ou sk-..."
                 defaultValue={initialData?.openai_api_key || ""}
               />
-              <p className="text-xs text-muted-foreground mt-1">Apenas para transcrição de áudio via Whisper.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="tavily_api_key">Tavily API Key (Internet)</Label>
+              <Input 
+                id="tavily_api_key" 
+                name="tavily_api_key" 
+                type="password"
+                placeholder="tvly-..."
+                defaultValue={initialData?.tavily_api_key || ""}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Permite que o agente pesquise no Google em tempo real. Crie uma conta gratuita em tavily.com</p>
             </div>
           </div>
           <DialogFooter>
