@@ -27,10 +27,10 @@ export default async function DashboardPage() {
     .order('created_at', { ascending: false })
     .limit(6);
 
-  // Fetch intents for "Uso por Intenção" and "Taxa de Sucesso"
+  // Fetch intents and dates for "Uso por Intenção", "Taxa de Sucesso" and "Volume de Interações"
   const { data: userMessages } = await supabase
     .from('messages')
-    .select('intent')
+    .select('intent, created_at')
     .eq('role', 'user');
 
   const totalUserMessages = userMessages?.length || 0;
@@ -47,11 +47,59 @@ export default async function DashboardPage() {
 
   // Calculate intent usage
   const intentCounts: Record<string, number> = {};
+  
+  // Calculate chart data for the last 7 days and previous 7 days for growth
+  const last7Days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return {
+      date: d,
+      dia: new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(d).replace(/^\w/, c => c.toUpperCase()),
+      mensagens: 0
+    };
+  });
+
+  let currentWeekCount = 0;
+  let previousWeekCount = 0;
+  const now = new Date();
+
   userMessages?.forEach(m => {
     if (m.intent) {
       intentCounts[m.intent] = (intentCounts[m.intent] || 0) + 1;
     }
+    
+    if (m.created_at) {
+      const msgDate = new Date(m.created_at);
+      
+      // Calculate diff in days
+      const diffTime = Math.abs(now.getTime() - msgDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays <= 7) {
+        currentWeekCount++;
+        // Find which day to increment in chart
+        const dayObj = last7Days.find(d => 
+          d.date.getDate() === msgDate.getDate() && 
+          d.date.getMonth() === msgDate.getMonth() && 
+          d.date.getFullYear() === msgDate.getFullYear()
+        );
+        if (dayObj) {
+          dayObj.mensagens += 1;
+        }
+      } else if (diffDays > 7 && diffDays <= 14) {
+        previousWeekCount++;
+      }
+    }
   });
+
+  const chartData = last7Days.map(({ dia, mensagens }) => ({ dia, mensagens }));
+  
+  let growth = 0;
+  if (previousWeekCount > 0) {
+    growth = ((currentWeekCount - previousWeekCount) / previousWeekCount) * 100;
+  } else if (currentWeekCount > 0) {
+    growth = 100; // 100% growth if there was nothing last week and something this week
+  }
 
   // Sort intents by count descending and take top 5
   const topIntents = Object.entries(intentCounts)
@@ -148,7 +196,7 @@ export default async function DashboardPage() {
       {/* Middle Row: Gráficos e Analytics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <div className="col-span-full lg:col-span-4 flex flex-col">
-          <DashboardChart data={[]} />
+          <DashboardChart data={chartData} growth={growth} />
         </div>
         
         <Card className="col-span-full lg:col-span-3 flex flex-col">
