@@ -14,6 +14,45 @@ const createOpenAIClient = (apiKey: string | undefined) => {
   });
 };
 
+async function searchKnowledgeBase(query: string, apiKey: string, supabase: any) {
+  if (!apiKey || apiKey.startsWith('gsk_')) return ''; // Groq doesn't support embeddings
+
+  try {
+    const openai = new OpenAI({ apiKey });
+    
+    // 1. Convert user message to embedding
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: query,
+      dimensions: 1536,
+    });
+
+    const embedding = response.data[0].embedding;
+
+    // 2. Search Supabase via RPC
+    const { data, error } = await supabase.rpc('match_knowledge', {
+      query_embedding: embedding,
+      match_threshold: 0.3, // 30% similarity threshold
+      match_count: 3        // get top 3 most relevant chunks
+    });
+
+    if (error) {
+      console.error("RPC Error:", error);
+      return '';
+    }
+
+    if (!data || data.length === 0) return '';
+
+    // 3. Format the retrieved knowledge
+    const contextText = data.map((d: any) => d.content).join('\n\n');
+    return `\n[BASE DE CONHECIMENTO DA EMPRESA]\nUtilize as informações abaixo para responder a pergunta do usuário, caso sejam relevantes:\n${contextText}\n`;
+    
+  } catch (err) {
+    console.error("Knowledge Base Search Error:", err);
+    return '';
+  }
+}
+
 export async function runAgent(phone: string, content: string): Promise<string> {
   const supabase = getServiceSupabase();
   let user: any = { id: 'mock-user-id', status: 'active', phone };
@@ -93,11 +132,15 @@ export async function runAgent(phone: string, content: string): Promise<string> 
       ? `\n[MEMÓRIA DE LONGO PRAZO DO USUÁRIO]\nVocê já sabe as seguintes informações sobre este usuário:\n${user.preferences.perfil.map((p: string) => `- ${p}`).join('\n')}\nUse essas informações para personalizar seu atendimento e não pergunte novamente o que você já sabe.\n` 
       : '';
 
+    // Busca na Base de Conhecimento RAG (FAQ, Manuais da Empresa)
+    const openaiApiKey = user.settings?.openai_api_key || process.env.OPENAI_API_KEY;
+    const knowledgeContext = await searchKnowledgeBase(content, openaiApiKey as string, supabase);
+
     const systemPrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
 O seu tom de resposta deve ser estritamente: ${agentTone}.
 ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
 
-${agentInstructions}${userProfile}
+${agentInstructions}${userProfile}${knowledgeContext}
 A data e hora atual é: ${new Date().toISOString()}
 
 Seu objetivo é ajudar o usuário da melhor forma possível, utilizando as ferramentas disponíveis quando necessário.
