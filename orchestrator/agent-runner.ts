@@ -231,7 +231,7 @@ Nunca saia do seu personagem.`;
 
     // 3. First Call to LLM with Tools
     const response = await openai.chat.completions.create({
-      model: 'openai/gpt-4o-mini',
+      model: 'anthropic/claude-haiku-4-5',
       messages: messages,
       tools: tools as any,
       tool_choice: 'auto',
@@ -271,7 +271,7 @@ Nunca saia do seu personagem.`;
       
       // 5. Second Call to get the final response based on tool results
       const secondResponse = await openai.chat.completions.create({
-        model: 'openai/gpt-4o-mini',
+        model: 'anthropic/claude-haiku-4-5',
         messages: messages,
       });
       
