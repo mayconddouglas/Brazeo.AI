@@ -2,6 +2,41 @@
 
 import { getServiceSupabase } from "@/lib/supabase";
 
+export async function startNewConversation(name: string, phone: string, initialMessage: string) {
+  if (!name || !phone || !initialMessage) return { error: "Parâmetros inválidos" };
+
+  const supabase = getServiceSupabase();
+
+  try {
+    // 1. Verificar se usuário já existe
+    let userId;
+    const { data: existingUser } = await supabase.from('users').select('id').eq('phone', phone).single();
+
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      // 2. Se não existe, cria um novo usuário
+      const { data: newUser, error: createUserError } = await supabase.from('users').insert([{
+        name,
+        phone,
+      }]).select().single();
+
+      if (createUserError) throw createUserError;
+      userId = newUser.id;
+    }
+
+    // 3. Usa a mesma lógica de envio de mensagem já existente
+    const result = await sendMessageFromDashboard(userId, phone, initialMessage);
+    
+    if (result.error) throw new Error(result.error);
+
+    return { success: true, userId };
+  } catch (error) {
+    console.error("Erro ao iniciar nova conversa:", error);
+    return { error: "Falha ao iniciar conversa. Verifique os dados e tente novamente." };
+  }
+}
+
 export async function markMessagesAsRead(userId: string) {
   if (!userId) return { error: "ID de usuário inválido" };
 

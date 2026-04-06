@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChatArea } from "./chat-area";
 import { SearchInput } from "../users/search-input";
+import { NewConversationDialog } from "./new-conversation-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft } from "lucide-react";
@@ -109,7 +110,10 @@ export function ConversationsClient({
       {/* Lista de Contatos (Sidebar do Chat) */}
       <div className={`w-full md:w-[350px] lg:w-[400px] flex-shrink-0 border-r flex flex-col bg-muted/10 h-full ${activeUserId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b flex-shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <h2 className="text-xl font-bold tracking-tight mb-4">Conversas</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold tracking-tight">Conversas</h2>
+            <NewConversationDialog />
+          </div>
           <SearchInput />
         </div>
         
