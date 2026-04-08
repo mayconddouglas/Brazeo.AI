@@ -23,6 +23,19 @@ export async function addUser(formData: FormData) {
   return { success: true };
 }
 
+export async function deleteUser(id: string) {
+  const supabase = getServiceSupabase();
+  
+  if (!id) return { error: "ID é obrigatório" };
+
+  const { error } = await supabase.from("users").delete().eq("id", id);
+
+  if (error) return { error: "Erro ao excluir usuário." };
+
+  revalidatePath("/dashboard/users");
+  return { success: true };
+}
+
 export async function updateUser(formData: FormData) {
   const supabase = getServiceSupabase();
   const id = formData.get("id") as string;
@@ -43,14 +56,58 @@ export async function updateUser(formData: FormData) {
   return { success: true };
 }
 
-export async function deleteUser(id: string) {
+export async function approveUserAction(id: string) {
   const supabase = getServiceSupabase();
   
   if (!id) return { error: "ID é obrigatório" };
 
-  const { error } = await supabase.from("users").delete().eq("id", id);
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-  if (error) return { error: "Erro ao excluir usuário." };
+  if (userError || !user) return { error: "Usuário não encontrado." };
+
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ status: "active" })
+    .eq("id", id);
+
+  if (updateError) return { error: "Erro ao aprovar usuário." };
+
+  // Get settings to send message via Evolution API
+  const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+  const apiUrl = settings?.evolution_api_url || process.env.EVOLUTION_API_URL;
+  const apiKey = settings?.evolution_api_key || process.env.EVOLUTION_API_KEY;
+  const instance = settings?.evolution_instance_name || process.env.EVOLUTION_INSTANCE_NAME;
+
+  if (apiUrl && apiKey && instance) {
+    const name = user.name ? `, ${user.name}` : '';
+    const text = `Boa notícia${name}! 🎉\nSeu acesso à Safira foi aprovado!\nPode me mandar uma mensagem pra começarmos. 😊`;
+
+    try {
+      await fetch(`${apiUrl}/message/sendText/${instance}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': apiKey
+        },
+        body: JSON.stringify({
+          number: user.phone,
+          options: {
+            delay: 1200,
+            presence: 'composing'
+          },
+          textMessage: {
+            text: text
+          }
+        })
+      });
+    } catch (error) {
+      console.error('Error sending WhatsApp approval message:', error);
+    }
+  }
 
   revalidatePath("/dashboard/users");
   return { success: true };

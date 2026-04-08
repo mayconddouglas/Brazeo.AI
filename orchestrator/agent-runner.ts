@@ -68,16 +68,61 @@ export async function runAgent(phone: string, content: string): Promise<string> 
       .single();
 
     if (userError && userError.code === 'PGRST116') {
-      // User not found, create them
+      // User not found, create them with waitlist status
       const { data: newUser, error: createError } = await supabase
         .from('users')
-        .insert([{ phone, status: 'active' }])
+        .insert([{ phone, status: 'waitlist' }])
         .select()
         .single();
         
       if (!createError) user = newUser;
+      
+      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+      const waitlistWelcome = "Oi! 👋 A Safira ainda está em beta fechado 🔒\nMas já anotei seu interesse na lista de espera!\nAssim que uma vaga abrir, você será um dos primeiros a saber. 😊\nEnquanto isso, me conta seu nome pra eu guardar!";
+      
+      sendWhatsAppMessage(phone, waitlistWelcome, settings).catch(console.error);
+      return waitlistWelcome;
     } else if (!userError && dbUser) {
       user = dbUser;
+    }
+
+    if (user.status === 'blocked') {
+      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+      const blockedMsg = "Sua conta não está ativa no momento.\nEntre em contato com o suporte pelo @brazeo.ai no Instagram.";
+      sendWhatsAppMessage(phone, blockedMsg, settings).catch(console.error);
+      return blockedMsg;
+    }
+
+    if (user.status === 'waitlist') {
+      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+      if (!user.name || user.name.trim() === '') {
+        const openai = createOpenAIClient(settings?.openrouter_api_key);
+        const nameExtractionResponse = await openai.chat.completions.create({
+          model: 'anthropic/claude-haiku-4-5',
+          messages: [{ 
+            role: 'user', 
+            content: `O usuário está respondendo a uma mensagem pedindo o nome dele para uma lista de espera. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${content}"` 
+          }]
+        });
+        
+        let extractedName = nameExtractionResponse.choices[0].message?.content?.trim() || 'Desconhecido';
+        extractedName = extractedName.replace(/^["']|["']$/g, '');
+
+        if (extractedName !== 'Desconhecido' && extractedName.length > 0) {
+          await supabase.from('users').update({ name: extractedName }).eq('id', user.id);
+          const replyText = `Prontinho, ${extractedName}! Nome guardado. Em breve entraremos em contato. 😉`;
+          sendWhatsAppMessage(phone, replyText, settings).catch(console.error);
+          return replyText;
+        } else {
+          const askAgainText = "Desculpe, não consegui entender o seu nome. Poderia me dizer apenas o seu nome ou como prefere ser chamado?";
+          sendWhatsAppMessage(phone, askAgainText, settings).catch(console.error);
+          return askAgainText;
+        }
+      } else {
+        const waitlistMsg = "Você já está na nossa lista de espera! 🙌\nAssim que uma vaga abrir no beta, você será avisado aqui mesmo. Obrigada pela paciência! 😊";
+        sendWhatsAppMessage(phone, waitlistMsg, settings).catch(console.error);
+        return waitlistMsg;
+      }
     }
 
     if (user.status !== 'active') {

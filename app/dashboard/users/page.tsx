@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServiceSupabase } from "@/lib/supabase";
+import { Badge } from "@/components/ui/badge";
 import { AddUserButton } from "./add-user-button";
 import { UserActions } from "./user-actions";
 import { SearchInput } from "./search-input";
@@ -61,9 +62,26 @@ export default async function UsersPage({
                       <td className="p-4 align-middle">{user.name || 'Sem nome'}</td>
                       <td className="p-4 align-middle">{user.phone}</td>
                       <td className="p-4 align-middle">
-                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent ${user.status === 'active' ? 'bg-green-500/20 text-green-700' : user.status === 'blocked' ? 'bg-red-500/20 text-red-700' : 'bg-yellow-500/20 text-yellow-700'}`}>
-                          {user.status === 'active' ? 'Ativo' : user.status === 'blocked' ? 'Bloqueado' : user.status === 'waitlist' ? 'Espera' : user.status}
-                        </span>
+                        {user.status === 'active' && (
+                          <Badge variant="default" className="bg-green-500 hover:bg-green-600 text-white border-transparent">
+                            Ativo
+                          </Badge>
+                        )}
+                        {user.status === 'waitlist' && (
+                          <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white border-transparent">
+                            Lista de Espera
+                          </Badge>
+                        )}
+                        {user.status === 'blocked' && (
+                          <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-white border-transparent">
+                            Bloqueado
+                          </Badge>
+                        )}
+                        {!['active', 'waitlist', 'blocked'].includes(user.status) && (
+                          <Badge variant="outline">
+                            {user.status}
+                          </Badge>
+                        )}
                       </td>
                       <td className="p-4 align-middle">
                         <UserActions user={user} />

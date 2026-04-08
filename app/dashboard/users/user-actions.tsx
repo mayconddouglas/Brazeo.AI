@@ -13,7 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useTransition } from "react";
-import { updateUser, deleteUser } from "./actions";
+import { updateUser, deleteUser, approveUserAction } from "./actions";
+import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 
 export function UserActions({ user }: { user: any }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -44,8 +46,35 @@ export function UserActions({ user }: { user: any }) {
     });
   };
 
+  const handleApprove = () => {
+    startTransition(async () => {
+      const res = await approveUserAction(user.id);
+      if (res?.error) {
+        toast.error(res.error);
+      } else {
+        toast.success("Usuário aprovado e notificado!");
+      }
+    });
+  };
+
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 items-center">
+      {user.status === 'waitlist' && (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleApprove} 
+          disabled={isPending}
+          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+        >
+          {isPending ? "Aprovando..." : (
+            <>
+              <CheckCircle2 className="w-4 h-4 mr-1" /> Aprovar
+            </>
+          )}
+        </Button>
+      )}
+
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogTrigger render={<Button variant="ghost" size="sm">Editar</Button>} />
         <DialogContent className="sm:max-w-[425px]">
