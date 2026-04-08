@@ -123,6 +123,64 @@ export async function runAgent(phone: string, content: string): Promise<string> 
   try {
     const openai = createOpenAIClient(user.settings?.openrouter_api_key);
     
+    // --- LÓGICA DE ONBOARDING ---
+    if (!user.name || user.name.trim() === '') {
+      const hasAssistantMessage = history.some(m => m.role === 'assistant');
+
+      if (!hasAssistantMessage) {
+        const welcomeText = "Olá! 👋 Eu sou a Safira, sua assistente pessoal inteligente da Brazeo.IA.\n\nEstou aqui para deixar seu dia mais prático e descomplicado. Posso te ajudar com:\n✅ *Lembretes* para você não esquecer de nada\n✅ *Planejamento* das tarefas da semana\n✅ *Resumos* de textos longos\n✅ *Consultas rápidas* e tira-dúvidas\n\nPara começarmos bem, como você gostaria que eu te chamasse?";
+        
+        await supabase.from('messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: welcomeText,
+          intent: 'onboarding_welcome'
+        }]);
+
+        sendWhatsAppMessage(phone, welcomeText, user.settings).catch(console.error);
+        return welcomeText;
+      } else {
+        const nameExtractionResponse = await openai.chat.completions.create({
+          model: 'anthropic/claude-haiku-4-5',
+          messages: [{ 
+            role: 'user', 
+            content: `O usuário está respondendo a uma mensagem de boas-vindas perguntando o nome dele. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${content}"` 
+          }]
+        });
+        
+        let extractedName = nameExtractionResponse.choices[0].message?.content?.trim() || 'Desconhecido';
+        extractedName = extractedName.replace(/^["']|["']$/g, '');
+
+        if (extractedName !== 'Desconhecido' && extractedName.length > 0) {
+          await executeTool('memorizar_informacao', { fato: `O nome do usuário é ${extractedName}` }, user);
+          await supabase.from('users').update({ name: extractedName }).eq('id', user.id);
+          
+          const replyText = `Prazer em te conhecer, ${extractedName}! Já gravei seu nome aqui. Como posso te ajudar hoje? 😊`;
+          
+          await supabase.from('messages').insert([{
+            user_id: user.id,
+            role: 'assistant',
+            content: replyText,
+            intent: 'onboarding_complete'
+          }]);
+
+          sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+          return replyText;
+        } else {
+          const askAgainText = "Desculpe, não consegui entender o seu nome. Poderia me dizer apenas o seu nome ou como prefere ser chamado?";
+          await supabase.from('messages').insert([{
+            user_id: user.id,
+            role: 'assistant',
+            content: askAgainText,
+            intent: 'onboarding_retry'
+          }]);
+          sendWhatsAppMessage(phone, askAgainText, user.settings).catch(console.error);
+          return askAgainText;
+        }
+      }
+    }
+    // --- FIM DA LÓGICA DE ONBOARDING ---
+
     const agentName = user.settings?.agent_name || 'Brazeo.IA';
     const agentTone = user.settings?.agent_tone || 'friendly';
     const agentInstructions = user.settings?.agent_instructions ? `Regras Adicionais de Comportamento:\n${user.settings.agent_instructions}\n\n` : '';
