@@ -88,6 +88,63 @@ export async function checkAndSendFeedbackRequest() {
   }
 }
 
+export async function sendGoodMorningMessage() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+  
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('status', 'active');
+
+  if (usersError || !users) {
+    console.error('Error fetching users for good morning message:', usersError);
+    return;
+  }
+
+  const { data: reminders, error: remindersError } = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('status', 'pending')
+    .gte('scheduled_at', startOfDay.toISOString())
+    .lte('scheduled_at', endOfDay.toISOString());
+
+  if (remindersError) {
+    console.error('Error fetching today reminders:', remindersError);
+    return;
+  }
+
+  const remindersByUser = reminders?.reduce((acc: any, reminder: any) => {
+    if (!acc[reminder.user_id]) acc[reminder.user_id] = [];
+    acc[reminder.user_id].push(reminder);
+    return acc;
+  }, {});
+
+  for (const user of users) {
+    const name = user.name || 'amigo(a)';
+    const userReminders = remindersByUser?.[user.id] || [];
+
+    if (userReminders.length > 0) {
+      const remindersList = userReminders.map((r: any) => {
+        const time = new Date(r.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `\n- ${time} - ${r.content}`;
+      }).join('');
+
+      const text = `Bom dia, ${name}! ☀️ Hoje você tem:${remindersList}\n\nPosso te lembrar antes de cada um?`;
+      await sendWhatsAppMessage(user.phone, text);
+    } else {
+      const text = `Bom dia, ${name}! ☀️ Sua agenda está livre hoje. Posso te ajudar a organizar o dia?`;
+      await sendWhatsAppMessage(user.phone, text);
+    }
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();
