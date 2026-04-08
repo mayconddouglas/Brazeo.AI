@@ -145,6 +145,67 @@ export async function sendGoodMorningMessage() {
   }
 }
 
+export async function sendWeeklySummary() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+  
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const isoSevenDaysAgo = sevenDaysAgo.toISOString();
+
+  const { data: users, error: usersError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('status', 'active');
+
+  if (usersError || !users) {
+    console.error('Error fetching users for weekly summary:', usersError);
+    return;
+  }
+
+  const { data: reminders } = await supabase
+    .from('reminders')
+    .select('user_id')
+    .gte('created_at', isoSevenDaysAgo);
+
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('user_id, role, intent')
+    .gte('created_at', isoSevenDaysAgo);
+
+  const remindersByUser: Record<string, number> = {};
+  const messagesByUser: Record<string, number> = {};
+  const summariesByUser: Record<string, number> = {};
+
+  reminders?.forEach(r => {
+    remindersByUser[r.user_id] = (remindersByUser[r.user_id] || 0) + 1;
+  });
+
+  messages?.forEach(m => {
+    if (m.role === 'user') {
+      messagesByUser[m.user_id] = (messagesByUser[m.user_id] || 0) + 1;
+    }
+    if (m.intent === 'resumir_texto') {
+      summariesByUser[m.user_id] = (summariesByUser[m.user_id] || 0) + 1;
+    }
+  });
+
+  for (const user of users) {
+    const totalReminders = remindersByUser[user.id] || 0;
+    const totalMessages = messagesByUser[user.id] || 0;
+    const totalSummaries = summariesByUser[user.id] || 0;
+
+    if (totalReminders === 0 && totalMessages === 0 && totalSummaries === 0) {
+      continue;
+    }
+
+    const name = user.name || 'amigo(a)';
+    const text = `${name}, aqui está seu resumo da semana! 📋\n✅ ${totalReminders} lembretes criados\n📚 ${totalSummaries} textos resumidos\n💬 ${totalMessages} mensagens trocadas\n\nPosso ajudar com algo antes do fim de semana? 😊`;
+    
+    await sendWhatsAppMessage(user.phone, text);
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();
