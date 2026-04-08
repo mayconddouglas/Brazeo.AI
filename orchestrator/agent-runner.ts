@@ -355,6 +355,79 @@ Nunca saia do seu personagem.`;
             required: ['query']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'resumir_materia',
+          description: 'Cria um resumo estruturado em tópicos sobre um assunto escolar ou acadêmico.',
+          parameters: {
+            type: 'object',
+            properties: {
+              assunto: { type: 'string', description: 'O tema ou matéria a ser resumido.' },
+              nivel: { type: 'string', description: 'O nível de profundidade desejado (ex: médio, faculdade, concurso).' }
+            },
+            required: ['assunto']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'explicar_assunto',
+          description: 'Explica um assunto difícil com linguagem simples, analogias e exemplos práticos.',
+          parameters: {
+            type: 'object',
+            properties: {
+              assunto: { type: 'string', description: 'O assunto ou conceito a ser explicado.' }
+            },
+            required: ['assunto']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'criar_questionario',
+          description: 'Cria questões de múltipla escolha (A, B, C, D) para o usuário praticar sobre um assunto.',
+          parameters: {
+            type: 'object',
+            properties: {
+              assunto: { type: 'string', description: 'O tema das questões.' },
+              quantidade: { type: 'number', description: 'O número de questões a serem criadas.' }
+            },
+            required: ['assunto']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'plano_estudos',
+          description: 'Monta um plano de estudos semanal dividido por dia, com matérias, tempo sugerido e tipo de atividade.',
+          parameters: {
+            type: 'object',
+            properties: {
+              materias: { type: 'string', description: 'A lista de matérias ou objetivos que o usuário deseja estudar.' },
+              disponibilidade: { type: 'string', description: 'O tempo disponível por dia (ex: 2 horas).' }
+            },
+            required: ['materias']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'modo_professor',
+          description: 'Ativa o modo interativo onde você ensina passo a passo: faz uma pergunta, aguarda a resposta, corrige com explicação e avança apenas quando o aluno entender.',
+          parameters: {
+            type: 'object',
+            properties: {
+              assunto: { type: 'string', description: 'O assunto a ser ensinado no modo interativo.' }
+            },
+            required: ['assunto']
+          }
+        }
       }
     ];
 

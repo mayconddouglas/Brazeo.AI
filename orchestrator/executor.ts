@@ -12,9 +12,55 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleMemorizarInformacao(user, args);
     case 'pesquisar_internet':
       return await handlePesquisarInternet(user, args);
+    case 'resumir_materia':
+      return await handleResumirMateria(args);
+    case 'explicar_assunto':
+      return await handleExplicarAssunto(args);
+    case 'criar_questionario':
+      return await handleCriarQuestionario(args);
+    case 'plano_estudos':
+      return await handlePlanoEstudos(args);
+    case 'modo_professor':
+      return await handleModoProfessor(args);
     default:
       return { error: 'Ferramenta desconhecida' };
   }
+}
+
+async function handleResumirMateria(args: any) {
+  const nivelStr = args.nivel ? ` adaptado ao nível ${args.nivel}` : '';
+  return {
+    success: true,
+    instruction: `Crie um resumo estruturado em tópicos sobre o assunto solicitado${nivelStr}. Adapte a profundidade e a linguagem para o nível educacional especificado. Organize com títulos, subtópicos e destaque as palavras-chave.`
+  };
+}
+
+async function handleExplicarAssunto(args: any) {
+  return {
+    success: true,
+    instruction: 'Explique o assunto de forma extremamente simples e didática. Utilize analogias do dia a dia e exemplos práticos. Se o usuário estiver afirmando que não entendeu uma explicação anterior, tente uma abordagem ou analogia completamente diferente.'
+  };
+}
+
+async function handleCriarQuestionario(args: any) {
+  return {
+    success: true,
+    instruction: 'Crie um questionário com a quantidade solicitada de perguntas de múltipla escolha (A, B, C, D) sobre o assunto. Se o usuário estiver respondendo a um questionário anterior, corrija as respostas, parabenize os acertos e explique detalhadamente o porquê dos erros.'
+  };
+}
+
+async function handlePlanoEstudos(args: any) {
+  return {
+    success: true,
+    instruction: 'Crie um cronograma semanal de estudos (Segunda a Sexta/Domingo) distribuindo as matérias fornecidas. Para cada dia, inclua o tempo sugerido e intercale tipos de atividade (leitura, exercícios, revisão). Mantenha o cronograma realista e equilibrado.'
+  };
+}
+
+async function handleModoProfessor(args: any) {
+  return {
+    success: true,
+    instruction: 'Inicie ou continue o Modo Professor. Faça apenas UMA pergunta ou ensine UM conceito por vez. Aguarde a resposta do aluno. Ao receber a resposta, valide, explique o conceito se necessário e só avance para a próxima etapa se o aluno demonstrar compreensão. Mantenha o tom muito encorajador e paciente.'
+  };
 }
 
 async function handlePesquisarInternet(user: any, args: any) {
