@@ -46,6 +46,48 @@ export async function checkAndSendReminders() {
   }
 }
 
+export async function checkAndSendFeedbackRequest() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('status', 'active');
+
+  if (error || !users) {
+    console.error('Error fetching users for feedback:', error);
+    return;
+  }
+
+  for (const user of users) {
+    const prefs = user.preferences || {};
+    const ultimoFeedback = prefs.ultimo_feedback;
+
+    let shouldSend = false;
+    if (!ultimoFeedback) {
+      shouldSend = true;
+    } else {
+      const lastDate = new Date(ultimoFeedback);
+      const diffTime = Math.abs(now.getTime() - lastDate.getTime());
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays >= 3) {
+        shouldSend = true;
+      }
+    }
+
+    if (shouldSend) {
+      const name = user.name || 'amigo(a)';
+      const text = `Oi ${name}! Como estou indo até agora? 😊\nMe responde com um número:\n1 - Tô adorando 🔥\n2 - Tá bom, mas pode melhorar\n3 - Tive algum problema\nSua opinião me ajuda a ficar melhor!`;
+      
+      await sendWhatsAppMessage(user.phone, text);
+
+      prefs.ultimo_feedback = now.toISOString();
+      await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
+    }
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();

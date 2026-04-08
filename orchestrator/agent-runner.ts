@@ -181,6 +181,32 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     }
     // --- FIM DA LÓGICA DE ONBOARDING ---
 
+    // --- LÓGICA DE FEEDBACK ---
+    const trimmedContent = content.trim();
+    if (['1', '2', '3'].includes(trimmedContent)) {
+      const lastAssistantMessage = history.find(m => m.role === 'assistant');
+      if (lastAssistantMessage && lastAssistantMessage.content.includes('Como estou indo até agora?')) {
+        
+        await supabase.from('feedbacks').insert([{
+          user_id: user.id,
+          score: parseInt(trimmedContent)
+        }]);
+
+        const replyText = "Muito obrigada pelo seu feedback! Isso me ajuda a melhorar cada vez mais. 🥰";
+        
+        await supabase.from('messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: replyText,
+          intent: 'feedback_response'
+        }]);
+
+        sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+        return replyText;
+      }
+    }
+    // --- FIM DA LÓGICA DE FEEDBACK ---
+
     const agentName = user.settings?.agent_name || 'Brazeo.IA';
     const agentTone = user.settings?.agent_tone || 'friendly';
     const agentInstructions = user.settings?.agent_instructions ? `Regras Adicionais de Comportamento:\n${user.settings.agent_instructions}\n\n` : '';

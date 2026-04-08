@@ -112,6 +112,14 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
+-- Tabela: feedbacks
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  score INTEGER CHECK (score IN (1, 2, 3)),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Insert default row
 INSERT INTO settings (id, agent_name, agent_tone, agent_instructions)
 VALUES (1, 'Brazeo.IA', 'friendly', 'Você é um assistente virtual prestativo, educado e focado em resolver os problemas do cliente de forma rápida.')
@@ -125,6 +133,7 @@ ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE broadcasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_base ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feedbacks ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS (Apenas Service Role pode acessar tudo por padrão, anon não tem acesso)
 -- Se precisar de acesso autenticado via painel admin, crie políticas para auth.uid()
@@ -135,3 +144,4 @@ CREATE POLICY "Allow full access to authenticated users" ON tasks FOR ALL USING 
 CREATE POLICY "Allow full access to authenticated users" ON broadcasts FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON settings FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Allow full access to authenticated users" ON knowledge_base FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Allow full access to authenticated users" ON feedbacks FOR ALL USING (auth.role() = 'authenticated');
