@@ -200,7 +200,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
           await executeTool('memorizar_informacao', { fato: `O nome do usuário é ${extractedName}` }, user);
           await supabase.from('users').update({ name: extractedName }).eq('id', user.id);
           
-          const replyText = `Prazer em te conhecer, ${extractedName}! Já gravei seu nome aqui. Como posso te ajudar hoje? 😊`;
+          const replyText = `Prazer em te conhecer, ${extractedName}! Qual é a sua data de aniversário? Assim posso te surpreender no dia especial! 🎂 (me fala no formato dia/mês, ex: 15/03)`;
           
           await supabase.from('messages').insert([{
             user_id: user.id,
@@ -426,6 +426,20 @@ Nunca saia do seu personagem.`;
               assunto: { type: 'string', description: 'O assunto a ser ensinado no modo interativo.' }
             },
             required: ['assunto']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'salvar_aniversario',
+          description: 'Salva a data de aniversário do usuário. Use quando o usuário mencionar sua data de nascimento ou aniversário.',
+          parameters: {
+            type: 'object',
+            properties: {
+              data_aniversario: { type: 'string', description: 'A data de aniversário no formato MM-DD (ex: 03-15 para 15 de março).' }
+            },
+            required: ['data_aniversario']
           }
         }
       }

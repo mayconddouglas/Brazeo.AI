@@ -206,6 +206,33 @@ export async function sendWeeklySummary() {
   }
 }
 
+export async function checkAndSendBirthdayMessage() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayMMDD = `${month}-${day}`;
+
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('status', 'active');
+
+  if (error || !users) {
+    console.error('Error fetching users for birthdays:', error);
+    return;
+  }
+
+  for (const user of users) {
+    const prefs = user.preferences || {};
+    if (prefs.aniversario === todayMMDD) {
+      const name = user.name || 'amigo(a)';
+      const text = `Feliz aniversário, ${name}! 🎂🎉\nQue esse novo ano da sua vida seja incrível!\nÉ um prazer fazer parte do seu dia a dia. 💙`;
+      await sendWhatsAppMessage(user.phone, text);
+    }
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();

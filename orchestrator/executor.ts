@@ -22,6 +22,8 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handlePlanoEstudos(args);
     case 'modo_professor':
       return await handleModoProfessor(args);
+    case 'salvar_aniversario':
+      return await handleSalvarAniversario(user, args);
     default:
       return { error: 'Ferramenta desconhecida' };
   }
@@ -60,6 +62,31 @@ async function handleModoProfessor(args: any) {
   return {
     success: true,
     instruction: 'Inicie ou continue o Modo Professor. Faça apenas UMA pergunta ou ensine UM conceito por vez. Aguarde a resposta do aluno. Ao receber a resposta, valide, explique o conceito se necessário e só avance para a próxima etapa se o aluno demonstrar compreensão. Mantenha o tom muito encorajador e paciente.'
+  };
+}
+
+async function handleSalvarAniversario(user: any, args: any) {
+  if (!args.data_aniversario) {
+    return { error: 'Data de aniversário não fornecida.' };
+  }
+
+  const supabase = getServiceSupabase();
+  const prefs = user.preferences || {};
+  prefs.aniversario = args.data_aniversario;
+
+  const { error } = await supabase
+    .from('users')
+    .update({ preferences: prefs })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('Error saving birthday:', error);
+    return { error: `Falha ao salvar a data de aniversário no banco de dados: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    instruction: 'A data de aniversário foi salva com sucesso. Agradeça ao usuário e pergunte como pode ajudá-lo hoje.'
   };
 }
 
