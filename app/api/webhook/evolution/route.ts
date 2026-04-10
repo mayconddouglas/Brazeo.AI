@@ -73,13 +73,25 @@ export async function POST(req: Request) {
     const phone = remoteJid.split('@')[0];
     
     // Extract message content
-    let content = '';
+    let content: string | any[] = '';
     const message = messageData.message;
     
     if (message?.conversation) {
       content = message.conversation;
     } else if (message?.extendedTextMessage?.text) {
       content = message.extendedTextMessage.text;
+    } else if (message?.imageMessage) {
+      const base64Image = messageData.message.base64 || messageData.base64;
+      const caption = message.imageMessage.caption || '';
+      
+      if (base64Image) {
+        content = [
+          { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } },
+          { type: "text", text: caption || "O que você vê nessa imagem? Descreva e ajude o usuário." }
+        ];
+      } else {
+        content = '[Imagem recebida, mas sem dados base64]';
+      }
     } else if (message?.audioMessage) {
       const base64Audio = messageData.message.base64 || messageData.base64 || message.audioMessage.base64;
       

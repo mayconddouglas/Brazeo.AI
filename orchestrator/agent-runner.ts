@@ -53,7 +53,11 @@ async function searchKnowledgeBase(query: string, apiKey: string, supabase: any)
   }
 }
 
-export async function runAgent(phone: string, content: string): Promise<string> {
+export async function runAgent(phone: string, content: string | any[]): Promise<string> {
+  const contentString = Array.isArray(content) 
+    ? `[Imagem enviada pelo usuário]${content[1].text !== "O que você vê nessa imagem? Descreva e ajude o usuário." ? " " + content[1].text : ""}`
+    : content;
+
   const supabase = getServiceSupabase();
   let user: any = { id: 'mock-user-id', status: 'active', phone };
   let history: any[] = [];
@@ -101,7 +105,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
           model: 'anthropic/claude-haiku-4-5',
           messages: [{ 
             role: 'user', 
-            content: `O usuário está respondendo a uma mensagem pedindo o nome dele para uma lista de espera. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${content}"` 
+            content: `O usuário está respondendo a uma mensagem pedindo o nome dele para uma lista de espera. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${contentString}"` 
           }]
         });
         
@@ -137,7 +141,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     const { data: insertedMessage } = await supabase.from('messages').insert([{
       user_id: user.id,
       role: 'user',
-      content: content
+      content: contentString
     }]).select('id').single();
     
     if (insertedMessage) {
@@ -189,7 +193,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
           model: 'anthropic/claude-haiku-4-5',
           messages: [{ 
             role: 'user', 
-            content: `O usuário está respondendo a uma mensagem de boas-vindas perguntando o nome dele. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${content}"` 
+            content: `O usuário está respondendo a uma mensagem de boas-vindas perguntando o nome dele. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${contentString}"` 
           }]
         });
         
@@ -227,7 +231,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
     // --- FIM DA LÓGICA DE ONBOARDING ---
 
     // --- LÓGICA DE FEEDBACK ---
-    const trimmedContent = content.trim();
+    const trimmedContent = contentString.trim();
     if (['1', '2', '3'].includes(trimmedContent)) {
       const lastAssistantMessage = history.find(m => m.role === 'assistant');
       if (lastAssistantMessage && lastAssistantMessage.content.includes('Como estou indo até agora?')) {
@@ -263,7 +267,7 @@ export async function runAgent(phone: string, content: string): Promise<string> 
 
     // Busca na Base de Conhecimento RAG (FAQ, Manuais da Empresa)
     const openaiApiKey = user.settings?.openai_api_key || process.env.OPENAI_API_KEY;
-    const knowledgeContext = await searchKnowledgeBase(content, openaiApiKey as string, supabase);
+    const knowledgeContext = await searchKnowledgeBase(contentString, openaiApiKey as string, supabase);
 
     const systemPrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
 O seu tom de resposta deve ser estritamente: ${agentTone}.
@@ -278,10 +282,14 @@ Nunca saia do seu personagem.`;
     const messages: any[] = [{ role: 'system', content: systemPrompt }];
 
     // Inject history (which already includes the current message since we fetched it after inserting)
-    history.forEach(m => {
+    history.forEach((m, index) => {
       // Map database roles to OpenAI roles. If unknown, default to 'user'
       const role = m.role === 'assistant' ? 'assistant' : 'user';
-      messages.push({ role, content: m.content });
+      if (index === history.length - 1 && role === 'user' && Array.isArray(content)) {
+        messages.push({ role, content: content });
+      } else {
+        messages.push({ role, content: m.content });
+      }
     });
 
     // If for some reason history is empty, push the current message
