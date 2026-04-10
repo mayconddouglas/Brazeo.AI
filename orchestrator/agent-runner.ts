@@ -14,6 +14,8 @@ const createOpenAIClient = (apiKey: string | undefined) => {
   });
 };
 
+const DAILY_MESSAGE_LIMIT = 50;
+
 async function searchKnowledgeBase(query: string, apiKey: string, supabase: any) {
   if (!apiKey || apiKey.startsWith('gsk_')) return ''; // Groq doesn't support embeddings
 
@@ -133,6 +135,24 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
       console.log(`User ${phone} is not active. Status: ${user.status}`);
       return 'Sua conta está inativa no momento.';
     }
+
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const prefs = user.preferences || {};
+    if (prefs.data_contagem !== todayUtc) {
+      prefs.msgs_hoje = 0;
+      prefs.data_contagem = todayUtc;
+    }
+
+    const msgsHoje = typeof prefs.msgs_hoje === 'number' ? prefs.msgs_hoje : 0;
+    if (msgsHoje >= DAILY_MESSAGE_LIMIT) {
+      const limitMsg = "Você atingiu o limite de 50 mensagens por hoje. 😊\nSeu limite renova à meia-noite. Até lá!";
+      sendWhatsAppMessage(phone, limitMsg, user.settings).catch(console.error);
+      return limitMsg;
+    }
+
+    prefs.msgs_hoje = msgsHoje + 1;
+    user.preferences = prefs;
+    await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
 
     // Update last seen
     await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
