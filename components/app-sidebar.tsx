@@ -93,8 +93,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <Bot className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Brazeo.IA</span>
-                  <span className="text-xs text-muted-foreground">Assistente Virtual</span>
+                  <span className="font-semibold">
+                    <span className="animate-pulse bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
+                    Safira
+                  </span>
+                  <span className="text-xs text-muted-foreground">by Brazeo.AI</span>
                 </div>
               </Link>
             } />

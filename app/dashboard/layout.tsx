@@ -3,6 +3,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Badge } from "@/components/ui/badge";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -22,9 +23,12 @@ export default function DashboardLayout({
           <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between border-b bg-background px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              <h1 className="text-xl font-semibold ml-2">Painel de Controle</h1>
+              <h1 className="text-xl font-semibold ml-2">Dashboard</h1>
             </div>
-            <ModeToggle />
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-green-600 border-green-600 text-xs">Beta</Badge>
+              <ModeToggle />
+            </div>
           </header>
           <main className={cn(
             "flex-1 overflow-auto",
