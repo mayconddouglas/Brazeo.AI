@@ -1,67 +1,57 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getServiceSupabase } from "@/lib/supabase";
 import { SettingsForm } from "./settings-form";
-import { WebhookModal } from "./webhook-modal";
-import { EvolutionModal, OpenRouterModal } from "./integration-modals";
+import { IntegrationCards } from "./integration-cards";
+import { BehaviorSettings } from "./behavior-settings";
+import { DangerZone } from "./danger-zone";
 
 export const revalidate = 0;
+
+/*
+SQL de Migração para colunas booleanas de comportamento:
+
+ALTER TABLE settings 
+ADD COLUMN IF NOT EXISTS planner_active BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS morning_message_active BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS internet_search_active BOOLEAN DEFAULT true,
+ADD COLUMN IF NOT EXISTS feedback_active BOOLEAN DEFAULT true;
+*/
 
 export default async function SettingsPage() {
   const supabase = getServiceSupabase();
 
   const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single();
 
-  const hasEvolutionApi = !!settings?.evolution_api_key || (!!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL);
-  const hasOpenRouterApi = !!settings?.openrouter_api_key || !!process.env.OPENROUTER_API_KEY;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-10">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Configurações</h2>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* SEÇÃO 1 — PERFIL DO AGENTE */}
+      <section>
         <SettingsForm initialData={settings} />
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Integrações</CardTitle>
-            <CardDescription>Gerencie as conexões de API.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b pb-4">
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center gap-2">
-                    Evolution API (WhatsApp)
-                    {hasEvolutionApi && <span className="inline-flex h-2 w-2 rounded-full bg-green-500" title="Ativo" />}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {hasEvolutionApi ? `Conectado à instância '${settings?.evolution_instance_name || process.env.EVOLUTION_INSTANCE_NAME || 'padrão'}'` : 'Não configurado'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <WebhookModal siteUrl={siteUrl} />
-                  <EvolutionModal initialData={settings} siteUrl={siteUrl} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between border-b pb-4">
-                <div className="space-y-0.5">
-                  <div className="font-medium flex items-center gap-2">
-                    OpenRouter API (OpenAI)
-                    {hasOpenRouterApi && <span className="inline-flex h-2 w-2 rounded-full bg-green-500" title="Ativo" />}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {hasOpenRouterApi ? 'Chave de API detectada' : 'Não configurado'}
-                  </div>
-                </div>
-                <OpenRouterModal initialData={settings} />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      </section>
+
+      {/* SEÇÃO 2 — INTEGRAÇÕES */}
+      <section>
+        <div className="mb-4">
+          <h3 className="text-lg font-medium">Integrações</h3>
+          <p className="text-sm text-muted-foreground">Conecte a Safira aos serviços externos e modelos de IA.</p>
+        </div>
+        <IntegrationCards settings={settings} siteUrl={siteUrl} />
+      </section>
+
+      {/* SEÇÃO 3 — LIMITES E COMPORTAMENTO */}
+      <section>
+        <BehaviorSettings settings={settings} />
+      </section>
+
+      {/* SEÇÃO 4 — ZONA DE PERIGO */}
+      <section>
+        <DangerZone />
+      </section>
     </div>
   );
 }
