@@ -3,7 +3,7 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
-import { Bell } from "lucide-react";
+import { SystemStatus } from "@/components/system-status";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -53,12 +53,7 @@ export function DashboardHeader() {
           </span>
         )}
         
-        <div className="relative inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted cursor-pointer transition-colors">
-          <Bell className="size-5 text-muted-foreground" />
-          <span className="absolute top-1 right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white border-2 border-background">
-            0
-          </span>
-        </div>
+        <SystemStatus />
 
         <div className="flex items-center gap-2 border-l pl-4 ml-1">
           <Badge variant="outline" className="text-green-600 border-green-600 text-xs hidden sm:inline-flex">Beta</Badge>
