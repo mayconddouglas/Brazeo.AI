@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { AddUserButton } from "./add-user-button";
 import { UserActions } from "./user-actions";
 import { SearchInput } from "./search-input";
+import { Users, UserCheck, Clock } from "lucide-react";
 
 export const revalidate = 0;
 
@@ -20,6 +21,16 @@ export default async function UsersPage({
 
   const supabase = getServiceSupabase();
   
+  const [
+    { count: totalUsers },
+    { count: activeUsers },
+    { count: waitlistUsers }
+  ] = await Promise.all([
+    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    supabase.from('users').select('*', { count: 'exact', head: true }).eq('status', 'waitlist')
+  ]);
+
   let supabaseQuery = supabase.from('users').select('*', { count: 'exact' });
   
   if (query) {
@@ -37,6 +48,42 @@ export default async function UsersPage({
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Usuários</h2>
         <AddUserButton />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total de Usuários</p>
+              <h3 className="text-2xl font-bold mt-1">{totalUsers || 0}</h3>
+            </div>
+            <div className="p-3 bg-primary/10 rounded-full text-primary">
+              <Users className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Usuários Ativos</p>
+              <h3 className="text-2xl font-bold mt-1">{activeUsers || 0}</h3>
+            </div>
+            <div className="p-3 bg-green-500/10 rounded-full text-green-600">
+              <UserCheck className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Na Lista de Espera</p>
+              <h3 className="text-2xl font-bold mt-1">{waitlistUsers || 0}</h3>
+            </div>
+            <div className="p-3 bg-yellow-500/10 rounded-full text-yellow-600">
+              <Clock className="size-5" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       <Card>
