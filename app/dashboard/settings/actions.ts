@@ -156,6 +156,34 @@ export async function resetSettingsAction() {
   return { success: true };
 }
 
+export async function saveNotificationsAction(formData: FormData) {
+  const supabase = getServiceSupabase();
+  
+  const planner_time = formData.get("planner_time") as string;
+  const morning_time = formData.get("morning_time") as string;
+  const summary_time = formData.get("summary_time") as string;
+  const feedback_interval = parseInt(formData.get("feedback_interval") as string, 10);
+
+  const { error } = await supabase
+    .from("settings")
+    .update({
+      planner_time: planner_time || "08:00",
+      morning_time: morning_time || "08:00",
+      summary_time: summary_time || "18:00",
+      feedback_interval: isNaN(feedback_interval) ? 3 : feedback_interval,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", 1);
+
+  if (error) {
+    console.error("Erro ao salvar notificações:", error);
+    return { error: `Erro do Banco: ${error.message}` };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true };
+}
+
 export async function saveSettingsAction(formData: FormData) {
   const supabase = getServiceSupabase();
   const agent_name = formData.get("agent_name") as string;
