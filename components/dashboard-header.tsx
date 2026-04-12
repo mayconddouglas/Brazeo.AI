@@ -15,6 +15,7 @@ const getPageTitle = (pathname: string) => {
   if (pathname.includes("/dashboard/knowledge")) return "Base de Conhecimento";
   if (pathname.includes("/dashboard/settings")) return "Configurações";
   if (pathname.includes("/dashboard/test")) return "Testar Agente";
+  if (pathname.includes("/dashboard/analytics")) return "Analytics";
   return "Dashboard";
 };
 

@@ -10,7 +10,8 @@ import {
   Bot,
   LogOut,
   GalleryVerticalEnd,
-  FlaskConical
+  FlaskConical,
+  TrendingUp
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -45,6 +46,11 @@ const data = {
     },
   ],
   navEngage: [
+    {
+      title: "Analytics",
+      url: "/dashboard/analytics",
+      icon: TrendingUp,
+    },
     {
       title: "Conversas",
       url: "/dashboard/conversations",
