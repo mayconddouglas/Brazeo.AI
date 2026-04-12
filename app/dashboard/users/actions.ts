@@ -23,6 +23,54 @@ export async function addUser(formData: FormData) {
   return { success: true };
 }
 
+export async function updateUserNotesAction(userId: string, notes: string) {
+  const supabase = getServiceSupabase();
+  
+  if (!userId) return { error: "ID do usuário é obrigatório" };
+
+  const { data: user, error: userError } = await supabase
+    .from("users")
+    .select("preferences")
+    .eq("id", userId)
+    .single();
+
+  if (userError || !user) return { error: "Usuário não encontrado." };
+
+  const prefs = user.preferences || {};
+  prefs.admin_notes = notes;
+
+  const { error: updateError } = await supabase
+    .from("users")
+    .update({ preferences: prefs })
+    .eq("id", userId);
+
+  if (updateError) return { error: "Erro ao salvar notas." };
+
+  revalidatePath("/dashboard/users");
+  return { success: true };
+}
+
+export async function getUserMessagesAction(userId: string) {
+  const supabase = getServiceSupabase();
+  
+  if (!userId) return [];
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("role", "user")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error("Erro ao buscar mensagens do usuário:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
 export async function deleteUser(id: string) {
   const supabase = getServiceSupabase();
   

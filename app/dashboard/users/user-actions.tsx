@@ -16,6 +16,7 @@ import { useState, useTransition } from "react";
 import { updateUser, deleteUser, approveUserAction } from "./actions";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { UserProfileSheet } from "./user-profile-sheet";
 
 export function UserActions({ user }: { user: any }) {
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -74,6 +75,8 @@ export function UserActions({ user }: { user: any }) {
           )}
         </Button>
       )}
+
+      <UserProfileSheet user={user} />
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogTrigger render={<Button variant="ghost" size="sm">Editar</Button>} />
