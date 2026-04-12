@@ -15,6 +15,8 @@ import { createClient } from "@supabase/supabase-js";
 import { markMessagesAsRead } from "./actions";
 import { useRouter } from "next/navigation";
 
+import { ExportConversationButton } from "./export-conversation-button";
+
 export function ConversationsClient({
   initialConversations,
   activeUser,
@@ -191,7 +193,7 @@ export function ConversationsClient({
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex flex-col min-w-0">
+              <div className="flex flex-col min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm truncate">{activeUser.name || "Desconhecido"}</span>
                   {activeUser.last_message_intent && (
@@ -202,6 +204,8 @@ export function ConversationsClient({
                 </div>
                 <span className="text-[11px] text-muted-foreground truncate">{activeUser.phone}</span>
               </div>
+
+              <ExportConversationButton userId={activeUserId} />
             </div>
             
             {/* Chat Area Component (Messages + Input) */}

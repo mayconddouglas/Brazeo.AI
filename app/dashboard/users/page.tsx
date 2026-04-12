@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getServiceSupabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { AddUserButton } from "./add-user-button";
+import { ExportUsersButton } from "./export-users-button";
 import { UserActions } from "./user-actions";
 import { SearchInput } from "./search-input";
 import { Users, UserCheck, Clock } from "lucide-react";
@@ -47,7 +48,10 @@ export default async function UsersPage({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold tracking-tight">Usuários</h2>
-        <AddUserButton />
+        <div className="flex items-center gap-2">
+          <ExportUsersButton />
+          <AddUserButton />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

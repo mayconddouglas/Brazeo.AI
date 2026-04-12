@@ -126,3 +126,29 @@ export async function sendMessageFromDashboard(userId: string, phone: string, co
     return { error: "Falha ao enviar mensagem." };
   }
 }
+
+export async function exportConversationAction(userId: string) {
+  const supabase = getServiceSupabase();
+  
+  if (!userId) return { error: "ID do usuário é obrigatório" };
+
+  const [ { data: user }, { data: messages } ] = await Promise.all([
+    supabase.from("users").select("name, phone").eq("id", userId).single(),
+    supabase.from("messages").select("role, content, created_at").eq("user_id", userId).order("created_at", { ascending: true })
+  ]);
+
+  if (!user || !messages) return { error: "Erro ao buscar histórico" };
+
+  const userName = user.name || user.phone || "Usuário";
+
+  const lines = messages.map(m => {
+    const dateStr = new Date(m.created_at).toLocaleString('pt-BR');
+    const sender = m.role === 'user' ? userName.toUpperCase() : 'SAFIRA';
+    const content = m.content.replace(/\n/g, '\n  '); // Indent multiline messages
+    return `[${dateStr}] ${sender}: ${content}`;
+  });
+
+  const txtContent = lines.join("\n\n");
+  
+  return { txt: txtContent, userName };
+}

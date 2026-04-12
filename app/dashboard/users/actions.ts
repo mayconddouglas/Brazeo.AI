@@ -71,6 +71,29 @@ export async function getUserMessagesAction(userId: string) {
   return data || [];
 }
 
+export async function exportUsersCSVAction() {
+  const supabase = getServiceSupabase();
+  const { data: users, error } = await supabase
+    .from("users")
+    .select("name, phone, status, created_at, last_seen_at")
+    .order("created_at", { ascending: false });
+
+  if (error || !users) return { error: "Erro ao exportar usuários" };
+
+  const headers = ["nome", "telefone", "status", "data_cadastro", "ultima_vez_visto"];
+  const rows = users.map(u => [
+    `"${u.name || ''}"`,
+    `"${u.phone || ''}"`,
+    `"${u.status || ''}"`,
+    `"${u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : ''}"`,
+    `"${u.last_seen_at ? new Date(u.last_seen_at).toLocaleString('pt-BR') : ''}"`
+  ].join(","));
+
+  const csvContent = [headers.join(","), ...rows].join("\n");
+  
+  return { csv: csvContent };
+}
+
 export async function deleteUser(id: string) {
   const supabase = getServiceSupabase();
   
