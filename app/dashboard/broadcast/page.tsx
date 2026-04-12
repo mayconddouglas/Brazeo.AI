@@ -27,7 +27,7 @@ export default async function BroadcastPage() {
         <p className="text-muted-foreground">Crie, agende e gerencie disparos de mensagens em massa.</p>
       </div>
       
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-[40%_60%]">
         <BroadcastForm activeUsers={activeUsers || []} />
         <BroadcastHistory broadcasts={broadcasts || []} totalActiveUsers={activeUsers?.length || 0} />
       </div>

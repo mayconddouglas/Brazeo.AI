@@ -69,9 +69,12 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
   };
 
   return (
-    <Card>
+    <Card className="h-fit">
       <CardHeader>
-        <CardTitle>Nova Mensagem</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <SendIcon className="size-5 text-primary" />
+          Novo Disparo
+        </CardTitle>
         <CardDescription>Envie uma mensagem para múltiplos usuários.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -141,7 +144,6 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="message">Mensagem</Label>
-                <span className="text-[10px] text-muted-foreground">{messageText.length} caracteres</span>
               </div>
               <Textarea 
                 name="message"
@@ -152,20 +154,23 @@ export function BroadcastForm({ activeUsers }: { activeUsers: any[] }) {
                 className="min-h-[120px] resize-y"
                 placeholder="Digite sua mensagem aqui..."
               />
-              <p className="text-[11px] text-muted-foreground">
-                Dica: Use <strong className="font-mono text-foreground">{`{nome}`}</strong> para personalizar.
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Dica: Use <strong className="font-mono text-foreground">{`{nome}`}</strong> para personalizar.
+                </p>
+                <span className="text-xs text-muted-foreground">{messageText.length}/1024 caracteres</span>
+              </div>
             </div>
             
             {messageText && (
-              <div className="flex flex-col gap-2">
-                <Label className="text-xs text-muted-foreground">Pré-visualização</Label>
-                <div className="bg-emerald-100 dark:bg-emerald-900/30 p-3 rounded-lg rounded-tl-none border border-emerald-200 dark:border-emerald-800/50 w-full md:w-[85%] relative">
-                  <p className="text-sm whitespace-pre-wrap text-emerald-950 dark:text-emerald-100">
+              <div className="flex flex-col gap-2 mt-2">
+                <Label className="text-xs text-muted-foreground">Pré-visualização (WhatsApp)</Label>
+                <div className="bg-[#dcf8c6] dark:bg-[#056162] text-[#303030] dark:text-[#e9edef] p-3 pt-2.5 rounded-lg rounded-tr-none w-fit max-w-[90%] self-end relative shadow-sm">
+                  <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap break-words">
                     {messageText.replace(/\{nome\}/gi, "João")}
                   </p>
-                  <div className="text-[9px] text-emerald-700/60 dark:text-emerald-400/50 text-right mt-1">
-                    Agora
+                  <div className="text-[10px] text-black/40 dark:text-white/50 text-right mt-1 flex justify-end items-center gap-1">
+                    {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               </div>

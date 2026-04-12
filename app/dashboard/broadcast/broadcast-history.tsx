@@ -72,8 +72,14 @@ export function BroadcastHistory({ broadcasts, totalActiveUsers }: { broadcasts:
                   <div className="flex items-center gap-2">
                     <Badge variant={
                       broadcast.status === 'sent' ? 'default' : 
-                      broadcast.status === 'processing' ? 'secondary' : 'outline'
-                    } className={broadcast.status === 'sent' ? 'bg-emerald-500 hover:bg-emerald-600' : ''}>
+                      broadcast.status === 'processing' ? 'default' : 
+                      broadcast.status === 'scheduled' ? 'default' : 'secondary'
+                    } className={
+                      broadcast.status === 'sent' ? 'bg-green-500 hover:bg-green-600 text-white border-transparent' : 
+                      broadcast.status === 'processing' ? 'bg-blue-500 hover:bg-blue-600 text-white border-transparent animate-pulse' : 
+                      broadcast.status === 'scheduled' ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-transparent' : 
+                      'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 border-transparent'
+                    }>
                       {broadcast.status === 'draft' ? 'Rascunho' : 
                        broadcast.status === 'scheduled' ? 'Agendado' : 
                        broadcast.status === 'processing' ? 'Processando...' : 'Enviado'}
