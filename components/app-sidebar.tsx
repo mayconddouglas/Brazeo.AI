@@ -11,7 +11,8 @@ import {
   LogOut,
   GalleryVerticalEnd,
   FlaskConical,
-  TrendingUp
+  TrendingUp,
+  Clock
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -50,6 +51,11 @@ const data = {
       title: "Analytics",
       url: "/dashboard/analytics",
       icon: TrendingUp,
+    },
+    {
+      title: "Lembretes",
+      url: "/dashboard/reminders",
+      icon: Clock,
     },
     {
       title: "Conversas",
