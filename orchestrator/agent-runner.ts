@@ -60,130 +60,137 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     ? `[Imagem enviada pelo usuário]${content[1].text !== "O que você vê nessa imagem? Descreva e ajude o usuário." ? " " + content[1].text : ""}`
     : content;
 
+  const isTestMode = phone === "test-admin-dashboard";
   const supabase = getServiceSupabase();
   let user: any = { id: 'mock-user-id', status: 'active', phone };
   let history: any[] = [];
   let userMessageId: string | null = null;
 
   try {
-    // 1. Identify User
-    let { data: dbUser, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('phone', phone)
-      .single();
-
-    if (userError && userError.code === 'PGRST116') {
-      // User not found, create them with waitlist status
-      const { data: newUser, error: createError } = await supabase
+    if (!isTestMode) {
+      // 1. Identify User
+      let { data: dbUser, error: userError } = await supabase
         .from('users')
-        .insert([{ phone, status: 'waitlist' }])
-        .select()
+        .select('*')
+        .eq('phone', phone)
         .single();
+
+      if (userError && userError.code === 'PGRST116') {
+        // User not found, create them with waitlist status
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert([{ phone, status: 'waitlist' }])
+          .select()
+          .single();
+          
+        if (!createError) user = newUser;
         
-      if (!createError) user = newUser;
-      
-      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
-      const waitlistWelcome = "Oi! 👋 A Safira ainda está em beta fechado 🔒\nMas já anotei seu interesse na lista de espera!\nAssim que uma vaga abrir, você será um dos primeiros a saber. 😊\nEnquanto isso, me conta seu nome pra eu guardar!";
-      
-      sendWhatsAppMessage(phone, waitlistWelcome, settings).catch(console.error);
-      return waitlistWelcome;
-    } else if (!userError && dbUser) {
-      user = dbUser;
-    }
-
-    if (user.status === 'blocked') {
-      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
-      const blockedMsg = "Sua conta não está ativa no momento.\nEntre em contato com o suporte pelo @brazeo.ai no Instagram.";
-      sendWhatsAppMessage(phone, blockedMsg, settings).catch(console.error);
-      return blockedMsg;
-    }
-
-    if (user.status === 'waitlist') {
-      const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
-      if (!user.name || user.name.trim() === '') {
-        const openai = createOpenAIClient(settings?.openrouter_api_key);
-        const nameExtractionResponse = await openai.chat.completions.create({
-          model: 'anthropic/claude-haiku-4-5',
-          messages: [{ 
-            role: 'user', 
-            content: `O usuário está respondendo a uma mensagem pedindo o nome dele para uma lista de espera. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${contentString}"` 
-          }]
-        });
+        const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+        const waitlistWelcome = "Oi! 👋 A Safira ainda está em beta fechado 🔒\nMas já anotei seu interesse na lista de espera!\nAssim que uma vaga abrir, você será um dos primeiros a saber. 😊\nEnquanto isso, me conta seu nome pra eu guardar!";
         
-        let extractedName = nameExtractionResponse.choices[0].message?.content?.trim() || 'Desconhecido';
-        extractedName = extractedName.replace(/^["']|["']$/g, '');
-
-        if (extractedName !== 'Desconhecido' && extractedName.length > 0) {
-          await supabase.from('users').update({ name: extractedName }).eq('id', user.id);
-          const replyText = `Prontinho, ${extractedName}! Nome guardado. Em breve entraremos em contato. 😉`;
-          sendWhatsAppMessage(phone, replyText, settings).catch(console.error);
-          return replyText;
-        } else {
-          const askAgainText = "Desculpe, não consegui entender o seu nome. Poderia me dizer apenas o seu nome ou como prefere ser chamado?";
-          sendWhatsAppMessage(phone, askAgainText, settings).catch(console.error);
-          return askAgainText;
-        }
-      } else {
-        const waitlistMsg = "Você já está na nossa lista de espera! 🙌\nAssim que uma vaga abrir no beta, você será avisado aqui mesmo. Obrigada pela paciência! 😊";
-        sendWhatsAppMessage(phone, waitlistMsg, settings).catch(console.error);
-        return waitlistMsg;
+        sendWhatsAppMessage(phone, waitlistWelcome, settings).catch(console.error);
+        return waitlistWelcome;
+      } else if (!userError && dbUser) {
+        user = dbUser;
       }
-    }
 
-    if (user.status !== 'active') {
-      console.log(`User ${phone} is not active. Status: ${user.status}`);
-      return 'Sua conta está inativa no momento.';
-    }
+      if (user.status === 'blocked') {
+        const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+        const blockedMsg = "Sua conta não está ativa no momento.\nEntre em contato com o suporte pelo @brazeo.ai no Instagram.";
+        sendWhatsAppMessage(phone, blockedMsg, settings).catch(console.error);
+        return blockedMsg;
+      }
 
-    const todayUtc = new Date().toISOString().slice(0, 10);
-    const prefs = user.preferences || {};
-    if (prefs.data_contagem !== todayUtc) {
-      prefs.msgs_hoje = 0;
-      prefs.data_contagem = todayUtc;
-    }
+      if (user.status === 'waitlist') {
+        const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
+        if (!user.name || user.name.trim() === '') {
+          const openai = createOpenAIClient(settings?.openrouter_api_key);
+          const nameExtractionResponse = await openai.chat.completions.create({
+            model: 'anthropic/claude-haiku-4-5',
+            messages: [{ 
+              role: 'user', 
+              content: `O usuário está respondendo a uma mensagem pedindo o nome dele para uma lista de espera. Extraia APENAS o primeiro nome do usuário a partir desta mensagem. Retorne apenas o nome, sem nenhuma outra palavra, pontuação ou saudação. Se não conseguir identificar um nome claro, retorne a palavra "Desconhecido". Mensagem: "${contentString}"` 
+            }]
+          });
+          
+          let extractedName = nameExtractionResponse.choices[0].message?.content?.trim() || 'Desconhecido';
+          extractedName = extractedName.replace(/^["']|["']$/g, '');
 
-    const msgsHoje = typeof prefs.msgs_hoje === 'number' ? prefs.msgs_hoje : 0;
-    if (msgsHoje >= DAILY_MESSAGE_LIMIT) {
-      const limitMsg = "Você atingiu o limite de 50 mensagens por hoje. 😊\nSeu limite renova à meia-noite. Até lá!";
-      sendWhatsAppMessage(phone, limitMsg, user.settings).catch(console.error);
-      return limitMsg;
-    }
+          if (extractedName !== 'Desconhecido' && extractedName.length > 0) {
+            await supabase.from('users').update({ name: extractedName }).eq('id', user.id);
+            const replyText = `Prontinho, ${extractedName}! Nome guardado. Em breve entraremos em contato. 😉`;
+            sendWhatsAppMessage(phone, replyText, settings).catch(console.error);
+            return replyText;
+          } else {
+            const askAgainText = "Desculpe, não consegui entender o seu nome. Poderia me dizer apenas o seu nome ou como prefere ser chamado?";
+            sendWhatsAppMessage(phone, askAgainText, settings).catch(console.error);
+            return askAgainText;
+          }
+        } else {
+          const waitlistMsg = "Você já está na nossa lista de espera! 🙌\nAssim que uma vaga abrir no beta, você será avisado aqui mesmo. Obrigada pela paciência! 😊";
+          sendWhatsAppMessage(phone, waitlistMsg, settings).catch(console.error);
+          return waitlistMsg;
+        }
+      }
 
-    prefs.msgs_hoje = msgsHoje + 1;
-    user.preferences = prefs;
-    await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
+      if (user.status !== 'active') {
+        console.log(`User ${phone} is not active. Status: ${user.status}`);
+        return 'Sua conta está inativa no momento.';
+      }
 
-    // Update last seen
-    await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      const prefs = user.preferences || {};
+      if (prefs.data_contagem !== todayUtc) {
+        prefs.msgs_hoje = 0;
+        prefs.data_contagem = todayUtc;
+      }
 
-    // Save user message and get its ID
-    const { data: insertedMessage } = await supabase.from('messages').insert([{
-      user_id: user.id,
-      role: 'user',
-      content: contentString
-    }]).select('id').single();
-    
-    if (insertedMessage) {
-      userMessageId = insertedMessage.id;
-    }
+      const msgsHoje = typeof prefs.msgs_hoje === 'number' ? prefs.msgs_hoje : 0;
+      if (msgsHoje >= DAILY_MESSAGE_LIMIT) {
+        const limitMsg = "Você atingiu o limite de 50 mensagens por hoje. 😊\nSeu limite renova à meia-noite. Até lá!";
+        sendWhatsAppMessage(phone, limitMsg, user.settings).catch(console.error);
+        return limitMsg;
+      }
 
-    // 2. Load Context (last 10 messages)
-    const { data: historyData } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      prefs.msgs_hoje = msgsHoje + 1;
+      user.preferences = prefs;
+      await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
+
+      // Update last seen
+      await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+
+      // Save user message and get its ID
+      const { data: insertedMessage } = await supabase.from('messages').insert([{
+        user_id: user.id,
+        role: 'user',
+        content: contentString
+      }]).select('id').single();
       
-    if (historyData) {
-      history = historyData.reverse();
+      if (insertedMessage) {
+        userMessageId = insertedMessage.id;
+      }
+
+      // 2. Load Context (last 10 messages)
+      const { data: historyData } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+        
+      if (historyData) {
+        history = historyData.reverse();
+      }
     }
     
     // Load agent settings
     const { data: settings } = await supabase.from('settings').select('*').eq('id', 1).single();
     if (settings) {
       user.settings = settings;
+    }
+    
+    if (isTestMode) {
+      user.name = "Admin de Teste";
     }
   } catch (error) {
     console.warn('Supabase is not configured or failed. Running in memory mode.', error);
@@ -528,20 +535,24 @@ Nunca saia do seu personagem.`;
 
     // 6. Update Intent & Save Assistant Message
     try {
-      if (userMessageId && intent !== 'resposta_livre') {
-        await supabase.from('messages').update({ intent }).eq('id', userMessageId);
-      }
+      if (!isTestMode) {
+        if (userMessageId && intent !== 'resposta_livre') {
+          await supabase.from('messages').update({ intent }).eq('id', userMessageId);
+        }
 
-      await supabase.from('messages').insert([{
-        user_id: user.id,
-        role: 'assistant',
-        content: replyText,
-        intent: intent
-      }]);
+        await supabase.from('messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: replyText,
+          intent: intent
+        }]);
+      }
     } catch (e) { /* ignore db error */ }
 
     // 7. Send via Evolution API (Fire and forget)
-    sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+    if (!isTestMode) {
+      sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+    }
 
     return replyText;
 

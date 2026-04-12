@@ -9,7 +9,8 @@ import {
   BarChart3,
   Bot,
   LogOut,
-  GalleryVerticalEnd
+  GalleryVerticalEnd,
+  FlaskConical
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -65,6 +66,11 @@ const data = {
       title: "Base de Conhecimento",
       url: "/dashboard/knowledge",
       icon: GalleryVerticalEnd,
+    },
+    {
+      title: "Testar Agente",
+      url: "/dashboard/test",
+      icon: FlaskConical,
     },
     {
       title: "Configurações",
