@@ -24,9 +24,11 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { logout } from "@/app/login/actions"
 import { useTransition } from "react"
+import { cn } from "@/lib/utils"
 
 const data = {
   user: {
@@ -74,6 +76,8 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const { state } = useSidebar();
+  const isCollapsed = state === "collapsed";
   const [isPending, startTransition] = useTransition();
 
   const handleLogout = () => {
@@ -92,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Bot className="size-4" />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
+                <div className={cn("flex flex-col gap-0.5 leading-none transition-all duration-200", isCollapsed && "hidden")}>
                   <span className="font-semibold">
                     <span className="animate-pulse bg-green-500 rounded-full w-2 h-2 inline-block mr-1"></span>
                     Safira
@@ -106,8 +110,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         {/* Painel Section */}
-        <SidebarMenu className="px-2 pt-4 pb-2">
-          <div className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <SidebarMenu className={cn("px-2 pt-4 pb-2", isCollapsed && "px-0 pt-2 pb-2")}>
+          <div className={cn(
+            "mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all duration-200",
+            isCollapsed && "hidden"
+          )}>
             Painel
           </div>
           {data.navMain.map((item) => (
@@ -122,11 +129,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ))}
         </SidebarMenu>
 
-        <SidebarSeparator />
+        <SidebarSeparator className={cn(isCollapsed && "my-1")} />
 
         {/* Engajamento Section */}
-        <SidebarMenu className="px-2 py-2">
-          <div className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <SidebarMenu className={cn("px-2 py-2", isCollapsed && "px-0 py-2")}>
+          <div className={cn(
+            "mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all duration-200",
+            isCollapsed && "hidden"
+          )}>
             Engajamento
           </div>
           {data.navEngage.map((item) => (
@@ -141,11 +151,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           ))}
         </SidebarMenu>
 
-        <SidebarSeparator />
+        <SidebarSeparator className={cn(isCollapsed && "my-1")} />
 
         {/* Sistema Section */}
-        <SidebarMenu className="px-2 py-2">
-          <div className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <SidebarMenu className={cn("px-2 py-2", isCollapsed && "px-0 py-2")}>
+          <div className={cn(
+            "mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all duration-200",
+            isCollapsed && "hidden"
+          )}>
             Sistema
           </div>
           {data.navSettings.map((item) => (
@@ -166,7 +179,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} disabled={isPending} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
               <LogOut className="size-4" />
-              <span>{isPending ? "Saindo..." : "Sair"}</span>
+              <span className={cn("transition-all duration-200", isCollapsed && "hidden")}>{isPending ? "Saindo..." : "Sair"}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
