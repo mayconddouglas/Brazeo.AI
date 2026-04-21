@@ -4,6 +4,8 @@ export async function executeTool(name: string, args: any, user: any) {
   switch (name) {
     case 'criar_lembrete':
       return await handleCriarLembrete(user, args);
+    case 'criar_missao':
+      return await handleCriarMissao(user, args);
     case 'planejar_semana':
       return await handlePlanejarSemana(user);
     case 'resumir_texto':
@@ -27,6 +29,46 @@ export async function executeTool(name: string, args: any, user: any) {
     default:
       return { error: 'Ferramenta desconhecida' };
   }
+}
+
+async function handleCriarMissao(user: any, args: any) {
+  if (!args.titulo || !args.objetivo || args.prazo_dias == null) {
+    return { error: 'Dados incompletos. Peça ao usuário o título, objetivo e o prazo (30, 60 ou 90 dias).' };
+  }
+
+  const prazo = Number(args.prazo_dias);
+  if (![30, 60, 90].includes(prazo)) {
+    return { error: 'Prazo inválido. O prazo deve ser 30, 60 ou 90 dias.' };
+  }
+
+  const supabase = getServiceSupabase();
+  const now = new Date();
+  const endsAt = new Date(now);
+  endsAt.setDate(endsAt.getDate() + prazo);
+
+  const { data, error } = await supabase
+    .from('missions')
+    .insert([{
+      user_id: user.id,
+      titulo: args.titulo,
+      objetivo: args.objetivo,
+      prazo_dias: prazo,
+      tarefas_diarias: args.tarefas_diarias || null,
+      ends_at: endsAt.toISOString(),
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating mission:', error);
+    return { error: `Falha ao salvar a missão no banco: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    mission: data,
+    instruction: 'Confirme para o usuário que a missão foi criada com sucesso, repita o título, o prazo e a tarefa diária, e diga que você vai acompanhar o progresso diariamente às 8h.'
+  };
 }
 
 async function handleResumirMateria(args: any) {

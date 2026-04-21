@@ -233,6 +233,53 @@ export async function checkAndSendBirthdayMessage() {
   }
 }
 
+export async function checkAndSendMissionUpdate() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+
+  const { data: missions, error } = await supabase
+    .from('missions')
+    .select('*, users(phone, name)')
+    .eq('status', 'active');
+
+  if (error) {
+    console.error('Error fetching missions:', error);
+    return;
+  }
+
+  const dayMs = 1000 * 60 * 60 * 24;
+
+  for (const mission of missions || []) {
+    const phone = mission.users?.phone;
+    if (!phone) continue;
+
+    const startsAt = mission.starts_at ? new Date(mission.starts_at) : now;
+    const prazoDias = Number(mission.prazo_dias) || 30;
+
+    const diffDays = Math.floor((now.getTime() - startsAt.getTime()) / dayMs);
+    const dayNumber = Math.min(prazoDias, Math.max(1, diffDays + 1));
+
+    const percent = Math.min(100, Math.round((dayNumber / prazoDias) * 100));
+    const blocks = 10;
+    const filled = Math.round((percent / 100) * blocks);
+    const bar = `${'▓'.repeat(filled)}${'░'.repeat(blocks - filled)}`;
+
+    const titulo = mission.titulo || 'Missão';
+    const tarefa = mission.tarefas_diarias || 'Siga firme no seu objetivo hoje.';
+
+    const text = `Dia ${dayNumber}/${prazoDias} da sua missão 🎯 ${titulo}\nProgresso: ${bar} ${percent}%\nTarefa de hoje: ${tarefa}\nBora! 💪`;
+    await sendWhatsAppMessage(phone, text);
+
+    const updates: any = { progresso: percent };
+    if (dayNumber >= prazoDias) {
+      updates.status = 'completed';
+      updates.progresso = 100;
+    }
+
+    await supabase.from('missions').update(updates).eq('id', mission.id);
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();

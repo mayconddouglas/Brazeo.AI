@@ -358,6 +358,23 @@ Nunca saia do seu personagem.`;
       {
         type: 'function',
         function: {
+          name: 'criar_missao',
+          description: 'Cria uma missão de longo prazo com objetivo claro e prazo definido. Use quando o usuário quiser se comprometer com uma meta de 30, 60 ou 90 dias.',
+          parameters: {
+            type: 'object',
+            properties: {
+              titulo: { type: 'string', description: 'Título curto da missão.' },
+              objetivo: { type: 'string', description: 'Objetivo claro e mensurável da missão.' },
+              prazo_dias: { type: 'number', enum: [30, 60, 90], description: 'Prazo da missão em dias (30, 60 ou 90).' },
+              tarefas_diarias: { type: 'string', description: 'O que fazer todo dia para avançar na missão.' }
+            },
+            required: ['titulo', 'objetivo', 'prazo_dias', 'tarefas_diarias']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
           name: 'planejar_semana',
           description: 'Retorna a lista de tarefas pendentes do usuário. Use isso quando o usuário pedir para organizar a semana, ver as tarefas da semana ou planejar os próximos dias.',
           parameters: {

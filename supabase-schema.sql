@@ -38,6 +38,21 @@ CREATE TABLE reminders (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: missions
+CREATE TABLE missions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  titulo TEXT NOT NULL,
+  objetivo TEXT NOT NULL,
+  prazo_dias INTEGER NOT NULL,
+  tarefas_diarias TEXT,
+  progresso INTEGER DEFAULT 0,
+  status TEXT DEFAULT 'active',
+  starts_at TIMESTAMPTZ DEFAULT NOW(),
+  ends_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Tabela: tasks
 CREATE TABLE tasks (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
