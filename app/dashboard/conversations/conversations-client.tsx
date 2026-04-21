@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -30,27 +30,103 @@ export function ConversationsClient({
   initialMessages: any[];
   query: string;
 }) {
-  const [conversations, setConversations] = useState(initialConversations);
+  const [conversations, setConversations] = useState(() =>
+    (initialConversations || []).map((c) => ({
+      ...c,
+      unread_count: c.unread_count ?? (c.last_message_role === "user" ? 1 : 0)
+    }))
+  );
   const router = useRouter();
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playNotificationSound = () => {
+    try {
+      const AudioContextCtor =
+        (window as any).AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContextCtor();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.value = 880;
+
+      gain.gain.value = 0;
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+    } catch {
+      return;
+    }
+  };
 
   // Marcar como lido ao abrir o chat (quando o activeUserId mudar)
   useEffect(() => {
-    if (activeUserId && activeUser?.last_message_role === 'user') {
-      // Chama a server action para atualizar o status no banco
+    if (!activeUserId) return;
+
+    const unread =
+      conversations.find((c) => c.id === activeUserId)?.unread_count ?? 0;
+    if (unread <= 0) return;
+
       markMessagesAsRead(activeUserId).then((res) => {
-        if (res.success) {
-          // Atualiza a lista local otimisticamente (remove a bolinha azul)
-          setConversations((prev) =>
-            prev.map((c) =>
-              c.id === activeUserId
-                ? { ...c, last_message_role: 'system' } // Fake role to trick the UI into thinking it's read
-                : c
-            )
-          );
-        }
+        if (!res?.success) return;
+        setConversations((prev) =>
+          prev.map((c) => (c.id === activeUserId ? { ...c, unread_count: 0 } : c))
+        );
       });
-    }
-  }, [activeUserId, activeUser]);
+  }, [activeUserId, conversations]);
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+    if (!supabaseUrl || !supabaseAnonKey) return;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    let cancelled = false;
+
+    const run = async () => {
+      const ids = (initialConversations || []).map((c) => c.id).filter(Boolean);
+      if (ids.length === 0) return;
+
+      const counts: Record<string, number> = {};
+
+      for (const id of ids) {
+        const { count } = await supabase
+          .from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", id)
+          .eq("role", "user")
+          .is("read_at", null);
+        counts[id] = count ?? 0;
+      }
+
+      if (cancelled) return;
+      setConversations((prev) =>
+        prev.map((c) => ({
+          ...c,
+          unread_count: counts[c.id] ?? c.unread_count ?? 0
+        }))
+      );
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialConversations]);
 
   // Supabase Realtime para a lista de contatos
   useEffect(() => {
@@ -69,6 +145,12 @@ export function ConversationsClient({
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
           const newMsg = payload.new;
+          const isActiveConversation = newMsg.user_id === activeUserId;
+
+          if (newMsg.role === "user") {
+            if (!isActiveConversation) playNotificationSound();
+            else markMessagesAsRead(newMsg.user_id);
+          }
 
           // Atualiza a lista de conversas colocando o remetente no topo
           setConversations((prev) => {
@@ -76,13 +158,23 @@ export function ConversationsClient({
             
             let updatedUser;
             if (existingIndex >= 0) {
+              const prevUser = prev[existingIndex];
+              const prevUnread = prevUser.unread_count ?? 0;
+              const nextUnread =
+                newMsg.role === "user"
+                  ? isActiveConversation
+                    ? 0
+                    : prevUnread + 1
+                  : prevUnread;
+
               updatedUser = {
-                ...prev[existingIndex],
+                ...prevUser,
                 last_message_content: newMsg.content,
                 last_message_created_at: newMsg.created_at,
                 last_message_role: newMsg.role,
                 last_message_id: newMsg.id,
-                last_message_intent: newMsg.intent
+                last_message_intent: newMsg.intent,
+                unread_count: nextUnread
               };
               
               const newList = [...prev];
@@ -103,7 +195,7 @@ export function ConversationsClient({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [router]);
+  }, [router, activeUserId]);
 
 
   return (
@@ -122,7 +214,8 @@ export function ConversationsClient({
         <div className="flex-1 overflow-y-auto">
           <div className="flex flex-col">
             {conversations.map((user) => {
-              const isUnread = user.last_message_role === 'user';
+              const unreadCount = user.unread_count ?? 0;
+              const isUnread = unreadCount > 0;
               const name = user.name || "Desconhecido";
               const initials = name.substring(0, 2).toUpperCase();
 
@@ -157,8 +250,10 @@ export function ConversationsClient({
                           {user.last_message_content}
                         </div>
                         
-                        {isUnread && (
-                          <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 shadow-sm animate-pulse"></div>
+                        {isUnread && activeUserId !== user.id && (
+                          <span className="inline-flex min-w-5 h-5 px-1.5 items-center justify-center rounded-full bg-red-500 text-[11px] font-semibold text-white flex-shrink-0">
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </span>
                         )}
                       </div>
                     </div>

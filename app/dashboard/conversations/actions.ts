@@ -43,28 +43,12 @@ export async function markMessagesAsRead(userId: string) {
   const supabase = getServiceSupabase();
 
   try {
-    // Busca a última mensagem desse usuário
-    const { data: lastMessage, error: fetchError } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-    // Se a última mensagem for do usuário e não estiver marcada como lida (aqui usaremos um update em todas as mensagens do user que não tem is_read)
-    // Como não temos um campo is_read explícito no momento, uma forma de "marcar como lido" no contexto atual
-    // é registrar uma mensagem de "sistema" invisível ou atualizar um campo 'last_read_at' na tabela users.
-    // Para simplificar a UI que verifica "user.last_message_role === 'user'", podemos inserir uma mensagem de sistema "Lido" (oculta)
-    // ou atualizar o perfil do usuário. A melhor abordagem real seria adicionar uma coluna 'is_read' boolean default false.
-    
-    // Vamos atualizar a tabela 'users' para registrar a última vez que o admin abriu a conversa
     const { error: updateError } = await supabase
-      .from('users')
-      .update({ updated_at: new Date().toISOString() }) // Usando updated_at como timestamp de leitura para não quebrar schema
-      .eq('id', userId);
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .eq("role", "user")
+      .is("read_at", null);
 
     if (updateError) throw updateError;
 

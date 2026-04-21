@@ -22,7 +22,8 @@ CREATE TABLE messages (
   role        TEXT NOT NULL,                 -- user | assistant
   content     TEXT NOT NULL,
   intent      TEXT,                          -- criar_lembrete | resumir_texto | ...
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  read_at     TIMESTAMPTZ
 );
 
 -- Tabela: reminders
