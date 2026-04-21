@@ -104,6 +104,7 @@ export default async function UsersPage({
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Nome</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Telefone</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Plano</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Ações</th>
                   </tr>
                 </thead>
@@ -135,13 +136,35 @@ export default async function UsersPage({
                         )}
                       </td>
                       <td className="p-4 align-middle">
+                        {(user.plan || "free") === "free" && (
+                          <Badge variant="secondary" className="bg-gray-500/10 text-gray-700 border border-gray-500/20 hover:bg-gray-500/20 dark:text-gray-300">
+                            Gratuito
+                          </Badge>
+                        )}
+                        {(user.plan || "free") === "beta" && (
+                          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20">
+                            Beta
+                          </Badge>
+                        )}
+                        {(user.plan || "free") === "premium" && (
+                          <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 border border-amber-500/30 hover:bg-amber-500/25 dark:text-amber-400">
+                            Premium
+                          </Badge>
+                        )}
+                        {!["free", "beta", "premium"].includes(user.plan || "free") && (
+                          <Badge variant="outline">
+                            {user.plan || "free"}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
                         <UserActions user={user} />
                       </td>
                     </tr>
                   ))}
                   {!users?.length && (
                     <tr>
-                      <td colSpan={4} className="p-4 text-center text-muted-foreground">Nenhum usuário encontrado.</td>
+                      <td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhum usuário encontrado.</td>
                     </tr>
                   )}
                 </tbody>

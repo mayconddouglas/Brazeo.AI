@@ -10,6 +10,7 @@ CREATE TABLE users (
   phone         TEXT UNIQUE NOT NULL,        -- número WhatsApp (+5511...)
   name          TEXT,
   status        TEXT DEFAULT 'active',       -- active | blocked | waitlist
+  plan          TEXT DEFAULT 'free',
   preferences   JSONB DEFAULT '{}',          -- tom, idioma, preferências
   created_at    TIMESTAMPTZ DEFAULT NOW(),
   last_seen_at  TIMESTAMPTZ

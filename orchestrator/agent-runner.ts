@@ -14,7 +14,7 @@ const createOpenAIClient = (apiKey: string | undefined) => {
   });
 };
 
-const DAILY_MESSAGE_LIMIT = 50;
+const PLAN_LIMITS: Record<string, number> = { free: 30, beta: 100, premium: Infinity };
 
 async function searchKnowledgeBase(query: string, apiKey: string, supabase: any) {
   if (!apiKey || apiKey.startsWith('gsk_')) return ''; // Groq doesn't support embeddings
@@ -65,6 +65,7 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
   let user: any = { id: 'mock-user-id', status: 'active', phone };
   let history: any[] = [];
   let userMessageId: string | null = null;
+  let usageNotice: string | null = null;
 
   try {
     if (!isTestMode) {
@@ -138,23 +139,36 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
         return 'Sua conta está inativa no momento.';
       }
 
+      const dailyLimit = PLAN_LIMITS[user.plan] ?? 30;
       const todayUtc = new Date().toISOString().slice(0, 10);
       const prefs = user.preferences || {};
       if (prefs.data_contagem !== todayUtc) {
         prefs.msgs_hoje = 0;
         prefs.data_contagem = todayUtc;
+        prefs.aviso_limite_80_data = null;
       }
 
       const msgsHoje = typeof prefs.msgs_hoje === 'number' ? prefs.msgs_hoje : 0;
-      if (msgsHoje >= DAILY_MESSAGE_LIMIT) {
-        const limitMsg = "Você atingiu o limite de 50 mensagens por hoje. 😊\nSeu limite renova à meia-noite. Até lá!";
+      if (Number.isFinite(dailyLimit) && msgsHoje >= dailyLimit) {
+        const limitMsg = `Você atingiu o limite de ${dailyLimit} mensagens por hoje. 😊\nSeu limite renova à meia-noite. Até lá!`;
         sendWhatsAppMessage(phone, limitMsg, user.settings).catch(console.error);
         return limitMsg;
       }
 
-      prefs.msgs_hoje = msgsHoje + 1;
+      const msgsHojeDepois = msgsHoje + 1;
+      prefs.msgs_hoje = msgsHojeDepois;
       user.preferences = prefs;
       await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
+
+      if (Number.isFinite(dailyLimit)) {
+        const threshold80 = Math.ceil(dailyLimit * 0.8);
+        const alreadyWarned = prefs.aviso_limite_80_data === todayUtc;
+        if (!alreadyWarned && msgsHojeDepois >= threshold80) {
+          prefs.aviso_limite_80_data = todayUtc;
+          usageNotice = `Você já usou ${msgsHojeDepois} das suas ${dailyLimit} mensagens de hoje 📊\nAmanhã o limite renova. Posso ajudar com mais algo?`;
+          await supabase.from("users").update({ preferences: prefs }).eq("id", user.id);
+        }
+      }
 
       // Update last seen
       await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
@@ -551,6 +565,9 @@ Nunca saia do seu personagem.`;
 
     // 7. Send via Evolution API (Fire and forget)
     if (!isTestMode) {
+      if (usageNotice) {
+        replyText = `${replyText}\n\n${usageNotice}`;
+      }
       sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
     }
 

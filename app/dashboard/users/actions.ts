@@ -94,6 +94,19 @@ export async function exportUsersCSVAction() {
   return { csv: csvContent };
 }
 
+export async function changePlanAction(userId: string, plan: string) {
+  const supabase = getServiceSupabase();
+
+  if (!userId) return { error: "ID do usuário é obrigatório" };
+  if (!["free", "beta", "premium"].includes(plan)) return { error: "Plano inválido" };
+
+  const { error } = await supabase.from("users").update({ plan }).eq("id", userId);
+  if (error) return { error: "Erro ao atualizar plano." };
+
+  revalidatePath("/dashboard/users");
+  return { success: true };
+}
+
 export async function deleteUser(id: string) {
   const supabase = getServiceSupabase();
   

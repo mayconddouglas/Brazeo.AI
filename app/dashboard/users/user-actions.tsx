@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useTransition } from "react";
-import { updateUser, deleteUser, approveUserAction } from "./actions";
+import { updateUser, deleteUser, approveUserAction, changePlanAction } from "./actions";
 import { CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { UserProfileSheet } from "./user-profile-sheet";
@@ -77,6 +78,27 @@ export function UserActions({ user }: { user: any }) {
       )}
 
       <UserProfileSheet user={user} />
+
+      <Select
+        defaultValue={user.plan || "free"}
+        disabled={isPending}
+        onValueChange={(value) => {
+          startTransition(async () => {
+            const res = await changePlanAction(user.id, value);
+            if (res?.error) toast.error(res.error);
+            else toast.success("Plano atualizado!");
+          });
+        }}
+      >
+        <SelectTrigger className="h-9 w-[140px]">
+          <SelectValue placeholder="Alterar plano" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="free">Gratuito</SelectItem>
+          <SelectItem value="beta">Beta</SelectItem>
+          <SelectItem value="premium">Premium</SelectItem>
+        </SelectContent>
+      </Select>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogTrigger render={<Button variant="ghost" size="sm">Editar</Button>} />
