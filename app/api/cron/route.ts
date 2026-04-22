@@ -5,6 +5,7 @@ import {
   checkAndSendFeedbackRequest, 
   sendWeeklySummary,
   checkAndSendMissionUpdate,
+  checkHabitsAndNotify,
   // @ts-ignore: Function might be implemented in the future
   checkAndSendBirthdayMessage 
 } from '@/execution/cron-jobs';
@@ -70,6 +71,10 @@ export async function GET(req: Request) {
 
       case 'missao':
         await checkAndSendMissionUpdate();
+        break;
+
+      case 'habitos':
+        await checkHabitsAndNotify();
         break;
 
       default:

@@ -280,6 +280,34 @@ export async function checkAndSendMissionUpdate() {
   }
 }
 
+export async function checkHabitsAndNotify() {
+  const supabase = getServiceSupabase();
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const currentHHMM = `${hh}:${mm}`;
+
+  const { data: habits, error } = await supabase
+    .from('habits')
+    .select('*, users(phone)')
+    .eq('status', 'active')
+    .eq('horario_lembrete', currentHHMM);
+
+  if (error) {
+    console.error('Error fetching habits:', error);
+    return;
+  }
+
+  for (const habit of habits || []) {
+    const phone = habit.users?.phone;
+    if (!phone) continue;
+
+    const streak = typeof habit.streak === 'number' ? habit.streak : 0;
+    const text = `Hora do seu hábito: ${habit.nome} 💪\nStreak atual: ${streak} dias seguidos 🔥\nJá fez hoje? Me confirma!`;
+    await sendWhatsAppMessage(phone, text);
+  }
+}
+
 async function sendWhatsAppMessage(phone: string, text: string) {
   const supabase = getServiceSupabase();
   const { data: settings } = await supabase.from('settings').select('evolution_api_url, evolution_api_key, evolution_instance_name').eq('id', 1).single();

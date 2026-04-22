@@ -377,6 +377,36 @@ Nunca saia do seu personagem.`;
       {
         type: 'function',
         function: {
+          name: 'criar_habito',
+          description: 'Cria um hábito recorrente com lembrete em um horário fixo. Use quando o usuário quiser criar um hábito diário ou semanal e receber lembretes.',
+          parameters: {
+            type: 'object',
+            properties: {
+              nome: { type: 'string', description: 'Nome do hábito (ex: "Beber água", "Ler 10 páginas").' },
+              frequencia: { type: 'string', enum: ['daily', 'weekly'], description: 'Frequência do hábito.' },
+              horario_lembrete: { type: 'string', description: 'Horário do lembrete no formato HH:MM (ex: 08:00).' }
+            },
+            required: ['nome', 'frequencia', 'horario_lembrete']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'confirmar_habito',
+          description: 'Registra o check-in de um hábito e atualiza o streak. Use quando o usuário disser que fez o hábito hoje.',
+          parameters: {
+            type: 'object',
+            properties: {
+              habit_id: { type: 'string', description: 'ID (UUID) do hábito que o usuário está confirmando.' }
+            },
+            required: ['habit_id']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
           name: 'planejar_semana',
           description: 'Retorna a lista de tarefas pendentes do usuário. Use isso quando o usuário pedir para organizar a semana, ver as tarefas da semana ou planejar os próximos dias.',
           parameters: {

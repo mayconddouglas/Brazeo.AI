@@ -53,6 +53,19 @@ CREATE TABLE missions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: habits
+CREATE TABLE habits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  nome TEXT NOT NULL,
+  frequencia TEXT NOT NULL,
+  horario_lembrete TEXT,
+  streak INTEGER DEFAULT 0,
+  last_check_in TIMESTAMPTZ,
+  status TEXT DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Tabela: tasks
 CREATE TABLE tasks (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

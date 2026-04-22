@@ -6,6 +6,10 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleCriarLembrete(user, args);
     case 'criar_missao':
       return await handleCriarMissao(user, args);
+    case 'criar_habito':
+      return await handleCriarHabito(user, args);
+    case 'confirmar_habito':
+      return await handleConfirmarHabito(user, args);
     case 'planejar_semana':
       return await handlePlanejarSemana(user);
     case 'resumir_texto':
@@ -68,6 +72,98 @@ async function handleCriarMissao(user: any, args: any) {
     success: true,
     mission: data,
     instruction: 'Confirme para o usuário que a missão foi criada com sucesso, repita o título, o prazo e a tarefa diária, e diga que você vai acompanhar o progresso diariamente às 8h.'
+  };
+}
+
+async function handleCriarHabito(user: any, args: any) {
+  if (!args.nome || !args.frequencia) {
+    return { error: 'Dados incompletos. Peça ao usuário o nome do hábito e a frequência (diário ou semanal).' };
+  }
+
+  if (!['daily', 'weekly'].includes(args.frequencia)) {
+    return { error: "Frequência inválida. Use 'daily' ou 'weekly'." };
+  }
+
+  if (args.horario_lembrete && !/^\d{2}:\d{2}$/.test(args.horario_lembrete)) {
+    return { error: "Horário inválido. Use o formato HH:MM (ex: 08:00)." };
+  }
+
+  const supabase = getServiceSupabase();
+  const { data, error } = await supabase
+    .from('habits')
+    .insert([{
+      user_id: user.id,
+      nome: args.nome,
+      frequencia: args.frequencia,
+      horario_lembrete: args.horario_lembrete || null
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating habit:', error);
+    return { error: `Falha ao salvar o hábito no banco: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    habit: data,
+    instruction: 'Confirme para o usuário que o hábito foi criado e explique como ele pode confirmar quando fizer (check-in).'
+  };
+}
+
+async function handleConfirmarHabito(user: any, args: any) {
+  if (!args.habit_id) {
+    return { error: 'ID do hábito ausente.' };
+  }
+
+  const supabase = getServiceSupabase();
+  const { data: habit, error: fetchError } = await supabase
+    .from('habits')
+    .select('*')
+    .eq('id', args.habit_id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (fetchError || !habit) {
+    return { error: 'Hábito não encontrado.' };
+  }
+
+  const now = new Date();
+  const last = habit.last_check_in ? new Date(habit.last_check_in) : null;
+
+  const toUtcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+
+  let nextStreak = typeof habit.streak === 'number' ? habit.streak : 0;
+
+  if (!last) {
+    nextStreak = 1;
+  } else {
+    const diffDays = Math.floor((toUtcDay(now) - toUtcDay(last)) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+      nextStreak = nextStreak;
+    } else if (diffDays === 1) {
+      nextStreak = nextStreak + 1;
+    } else {
+      nextStreak = 1;
+    }
+  }
+
+  const { error: updateError } = await supabase
+    .from('habits')
+    .update({ last_check_in: now.toISOString(), streak: nextStreak })
+    .eq('id', habit.id);
+
+  if (updateError) {
+    console.error('Error confirming habit:', updateError);
+    return { error: `Falha ao confirmar o hábito: ${updateError.message}` };
+  }
+
+  return {
+    success: true,
+    habit_id: habit.id,
+    streak: nextStreak,
+    instruction: `Confirme para o usuário que o check-in foi registrado e parabenize pelo streak de ${nextStreak} dias.`
   };
 }
 
