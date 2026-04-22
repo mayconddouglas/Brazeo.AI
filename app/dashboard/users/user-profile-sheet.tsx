@@ -16,6 +16,7 @@ import { useState, useTransition, useEffect } from "react";
 import { updateUserNotesAction, getUserMessagesAction } from "./actions";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { createClient } from "@supabase/supabase-js";
 
 function formatRelativeTime(dateStr: string) {
   if (!dateStr) return "Nunca";
@@ -57,6 +58,8 @@ export function UserProfileSheet({ user }: { user: any }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
+  const [moods, setMoods] = useState<any[]>([]);
+  const [moodsLoaded, setMoodsLoaded] = useState(false);
 
   const initials = user.name ? user.name.substring(0, 2).toUpperCase() : "U";
   const aiMemories = user.preferences?.perfil || [];
@@ -72,6 +75,35 @@ export function UserProfileSheet({ user }: { user: any }) {
       });
     }
   }, [isOpen, user.id, messagesLoaded]);
+
+  useEffect(() => {
+    if (!isOpen || moodsLoaded) return;
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !supabaseAnonKey) return;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    supabase
+      .from("mood_logs")
+      .select("id, humor, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        setMoods((data as any[]) || []);
+        setMoodsLoaded(true);
+      });
+  }, [isOpen, moodsLoaded, user.id]);
+
+  const moodEmoji: Record<string, string> = {
+    otimo: "😄",
+    bem: "🙂",
+    neutro: "😐",
+    estressado: "😣",
+    triste: "😢",
+    frustrado: "😤",
+  };
 
   const handleSaveNotes = () => {
     startTransition(async () => {
@@ -172,6 +204,29 @@ export function UserProfileSheet({ user }: { user: any }) {
                 <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Aniversário</span>
                 <span className="text-sm">{birthday}</span>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h4 className="font-semibold">Bem-estar</h4>
+              </div>
+              {moods.length > 0 ? (
+                <div className="space-y-2">
+                  {moods.map((m) => (
+                    <div key={m.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md border border-border/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{moodEmoji[m.humor] || "🙂"}</span>
+                        <span className="text-sm font-medium">{m.humor}</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatRelativeTime(m.created_at)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Sem registros recentes.</p>
+              )}
             </div>
           </TabsContent>
 

@@ -159,6 +159,14 @@ CREATE TABLE agent_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: mood_logs
+CREATE TABLE mood_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  humor TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Insert default row
 INSERT INTO settings (id, agent_name, agent_tone, agent_instructions)
 VALUES (1, 'Brazeo.IA', 'friendly', 'Você é um assistente virtual prestativo, educado e focado em resolver os problemas do cliente de forma rápida.')

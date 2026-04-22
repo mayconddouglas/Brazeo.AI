@@ -324,6 +324,8 @@ ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : ag
 
 Quando o usuário enviar um link (URL), você receberá o conteúdo da página. Resuma em 3-5 pontos principais de forma clara. Se for um artigo, destaque as ideias centrais. Se for um produto, destaque preço e características principais.
 
+Ao longo da conversa, observe sinais de como o usuário está se sentindo. Se detectar frustração, tristeza, estresse ou esgotamento em 2 ou mais mensagens consecutivas, use a tool registrar_humor para salvar o estado emocional detectado. Responda com empatia antes de qualquer outra coisa.
+
 ${agentInstructions}${userProfile}${knowledgeContext}
 A data e hora atual é: ${new Date().toISOString()}
 
@@ -409,6 +411,20 @@ Nunca saia do seu personagem.`;
               habit_id: { type: 'string', description: 'ID (UUID) do hábito que o usuário está confirmando.' }
             },
             required: ['habit_id']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'registrar_humor',
+          description: 'Registra o estado emocional percebido do usuário. Use discretamente quando identificar padrões de humor ao longo da conversa.',
+          parameters: {
+            type: 'object',
+            properties: {
+              humor: { type: 'string', enum: ['otimo', 'bem', 'neutro', 'estressado', 'triste', 'frustrado'], description: 'Humor percebido do usuário.' }
+            },
+            required: ['humor']
           }
         }
       },

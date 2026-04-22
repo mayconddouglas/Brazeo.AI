@@ -10,6 +10,8 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleCriarHabito(user, args);
     case 'confirmar_habito':
       return await handleConfirmarHabito(user, args);
+    case 'registrar_humor':
+      return await handleRegistrarHumor(user, args);
     case 'planejar_semana':
       return await handlePlanejarSemana(user);
     case 'resumir_texto':
@@ -164,6 +166,33 @@ async function handleConfirmarHabito(user: any, args: any) {
     habit_id: habit.id,
     streak: nextStreak,
     instruction: `Confirme para o usuário que o check-in foi registrado e parabenize pelo streak de ${nextStreak} dias.`
+  };
+}
+
+async function handleRegistrarHumor(user: any, args: any) {
+  if (!args.humor) {
+    return { error: 'Humor ausente.' };
+  }
+
+  const allowed = ['otimo', 'bem', 'neutro', 'estressado', 'triste', 'frustrado'];
+  if (!allowed.includes(args.humor)) {
+    return { error: 'Humor inválido.' };
+  }
+
+  const supabase = getServiceSupabase();
+  const { error } = await supabase.from('mood_logs').insert([{
+    user_id: user.id,
+    humor: args.humor,
+  }]);
+
+  if (error) {
+    console.error('Error saving mood log:', error);
+    return { error: `Falha ao salvar o humor no banco: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    instruction: 'O humor foi registrado. Responda com empatia e ofereça ajuda prática.'
   };
 }
 
