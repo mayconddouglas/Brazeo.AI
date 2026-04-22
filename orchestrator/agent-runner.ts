@@ -314,6 +314,8 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
 O seu tom de resposta deve ser estritamente: ${agentTone}.
 ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
 
+Quando o usuário enviar um link (URL), você receberá o conteúdo da página. Resuma em 3-5 pontos principais de forma clara. Se for um artigo, destaque as ideias centrais. Se for um produto, destaque preço e características principais.
+
 ${agentInstructions}${userProfile}${knowledgeContext}
 A data e hora atual é: ${new Date().toISOString()}
 

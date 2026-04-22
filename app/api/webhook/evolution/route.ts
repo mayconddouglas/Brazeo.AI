@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     // Extract message content
     let content: string | any[] = '';
     const message = messageData.message;
+    let hasClearIntent = false;
     
     if (message?.conversation) {
       content = message.conversation;
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
     } else if (message?.imageMessage) {
       const base64Image = messageData.message.base64 || messageData.base64;
       const caption = message.imageMessage.caption || '';
+      hasClearIntent = true;
       
       if (base64Image) {
         content = [
@@ -94,6 +96,7 @@ export async function POST(req: Request) {
       }
     } else if (message?.audioMessage) {
       const base64Audio = messageData.message.base64 || messageData.base64 || message.audioMessage.base64;
+      hasClearIntent = true;
       
       if (base64Audio) {
         try {
@@ -118,6 +121,55 @@ export async function POST(req: Request) {
       }
     } else {
       return NextResponse.json({ success: true, message: 'Ignored: Unsupported message type' });
+    }
+
+    if (typeof content === 'string' && !hasClearIntent) {
+      const urls = content.match(/(https?:\/\/[^\s]+)/g);
+      if (urls && urls.length > 0) {
+        const url = urls[0];
+        const supabase = getServiceSupabase();
+        const { data: settings } = await supabase.from('settings').select('tavily_api_key').eq('id', 1).single();
+        const apiKey = settings?.tavily_api_key || process.env.TAVILY_API_KEY;
+
+        if (apiKey) {
+          try {
+            const res = await fetch('https://api.tavily.com/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                api_key: apiKey,
+                url,
+                include_images: false,
+                extract_depth: 'basic'
+              })
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              const extracted =
+                data?.content ||
+                data?.raw_content ||
+                data?.text ||
+                data?.results?.[0]?.content ||
+                '';
+              const normalized = typeof extracted === 'string' ? extracted.trim() : '';
+
+              if (normalized) {
+                content = `[URL enviada pelo usuário: ${url}]\n[Conteúdo da página: ${normalized}]\nResuma esse link de forma clara e objetiva.`;
+              } else {
+                content = `[URL enviada pelo usuário: ${url}]\nResuma esse link de forma clara e objetiva.`;
+              }
+            } else {
+              content = `[URL enviada pelo usuário: ${url}]\nResuma esse link de forma clara e objetiva.`;
+            }
+          } catch (err) {
+            console.error('Tavily extract error:', err);
+            content = `[URL enviada pelo usuário: ${url}]\nResuma esse link de forma clara e objetiva.`;
+          }
+        } else {
+          content = `[URL enviada pelo usuário: ${url}]\nResuma esse link de forma clara e objetiva.`;
+        }
+      }
     }
 
     // Run the agent orchestrator asynchronously so we don't block the webhook response
