@@ -12,7 +12,8 @@ import {
   GalleryVerticalEnd,
   FlaskConical,
   TrendingUp,
-  Clock
+  Clock,
+  Terminal
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -78,6 +79,11 @@ const data = {
       title: "Base de Conhecimento",
       url: "/dashboard/knowledge",
       icon: GalleryVerticalEnd,
+    },
+    {
+      title: "Logs do Sistema",
+      url: "/dashboard/logs",
+      icon: Terminal,
     },
     {
       title: "Testar Agente",

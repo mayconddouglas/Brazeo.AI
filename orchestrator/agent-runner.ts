@@ -208,6 +208,14 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     }
   } catch (error) {
     console.warn('Supabase is not configured or failed. Running in memory mode.', error);
+    try {
+      await supabase.from('agent_logs').insert({
+        type: 'error',
+        message: (error as any)?.message || String(error),
+        context: JSON.stringify({ phone, content: contentString.slice(0, 200) }),
+        created_at: new Date().toISOString()
+      });
+    } catch {}
   }
 
   try {
@@ -624,6 +632,14 @@ Nunca saia do seu personagem.`;
 
   } catch (error) {
     console.error('Error in agent runner:', error);
+    try {
+      await supabase.from('agent_logs').insert({
+        type: 'error',
+        message: (error as any)?.message || String(error),
+        context: JSON.stringify({ phone, content: contentString.slice(0, 200) }),
+        created_at: new Date().toISOString()
+      });
+    } catch {}
     return 'Ocorreu um erro interno ao processar sua mensagem.';
   }
 }

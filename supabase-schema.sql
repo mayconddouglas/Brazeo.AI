@@ -150,6 +150,15 @@ CREATE TABLE IF NOT EXISTS feedbacks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Tabela: agent_logs
+CREATE TABLE agent_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT NOT NULL,
+  message TEXT NOT NULL,
+  context JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Insert default row
 INSERT INTO settings (id, agent_name, agent_tone, agent_instructions)
 VALUES (1, 'Brazeo.IA', 'friendly', 'Você é um assistente virtual prestativo, educado e focado em resolver os problemas do cliente de forma rápida.')
