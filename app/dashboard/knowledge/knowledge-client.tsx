@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,12 +14,70 @@ import { Badge } from "@/components/ui/badge";
 export function KnowledgeClient({ knowledgeBase = [] }: { knowledgeBase: any[] }) {
   const [isPending, setIsPending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [content, setContent] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const extractPdfText = async (arrayBuffer: ArrayBuffer) => {
+    const pdfjs = await import("pdfjs-dist");
+    const workerUrl = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
+    pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+
+    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+    const pdf = await loadingTask.promise;
+
+    const pages: string[] = [];
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const text = (textContent.items as any[])
+        .map((i) => (typeof i?.str === "string" ? i.str : ""))
+        .filter(Boolean)
+        .join(" ");
+      pages.push(text);
+    }
+
+    return pages.join("\n\n");
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "pdf" && ext !== "txt") {
+      toast.error("Formato inválido. Envie apenas .pdf ou .txt");
+      e.target.value = "";
+      return;
+    }
+
+    setIsExtracting(true);
+    try {
+      if (ext === "txt") {
+        const text = await file.text();
+        setContent(text);
+      } else {
+        const buf = await file.arrayBuffer();
+        const text = await extractPdfText(buf);
+        setContent(text);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao extrair o texto do arquivo.");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsPending(true);
-    
-    const formData = new FormData(e.currentTarget);
+
+    const formData = new FormData();
+    formData.set("content", content);
     const res = await addKnowledgeAction(formData);
     
     setIsPending(false);
@@ -28,7 +86,8 @@ export function KnowledgeClient({ knowledgeBase = [] }: { knowledgeBase: any[] }
       toast.error(res.error);
     } else {
       toast.success(`Conhecimento salvo! ${res?.count} parágrafo(s) indexado(s).`);
-      e.currentTarget.reset();
+      setContent("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -57,10 +116,27 @@ export function KnowledgeClient({ knowledgeBase = [] }: { knowledgeBase: any[] }
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 pb-4">
+              <div className="flex flex-col gap-3 mb-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,application/pdf,text/plain"
+                  onChange={handleFileChange}
+                  disabled={isPending || isExtracting}
+                />
+                {isExtracting && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                    Extraindo texto do arquivo...
+                  </div>
+                )}
+              </div>
               <Textarea 
                 name="content"
                 placeholder="Exemplo: Nossa política de troca permite devoluções em até 7 dias úteis após a compra, desde que o produto esteja na embalagem original..."
                 className="min-h-[300px] h-full resize-none text-base p-4 bg-muted/20"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
                 required
               />
             </CardContent>

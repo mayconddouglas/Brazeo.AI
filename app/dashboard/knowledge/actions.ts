@@ -23,11 +23,28 @@ export async function addKnowledgeAction(formData: FormData) {
 
     const openai = new OpenAI({ apiKey });
 
-    // 2. Simple chunking strategy (split by paragraphs)
-    const rawChunks = content.split(/\n\s*\n/);
-    const chunks = rawChunks
-      .map(c => c.trim())
-      .filter(c => c.length > 20); // ignore very tiny artifacts
+    const splitIntoMaxChunks = (text: string, maxLen: number) => {
+      const out: string[] = [];
+      let remaining = text.trim();
+
+      while (remaining.length > maxLen) {
+        const slice = remaining.slice(0, maxLen);
+        const lastSpace = slice.lastIndexOf(" ");
+        const cut = lastSpace > 200 ? lastSpace : maxLen;
+        out.push(remaining.slice(0, cut).trim());
+        remaining = remaining.slice(cut).trim();
+      }
+
+      if (remaining.length) out.push(remaining);
+      return out;
+    };
+
+    // 2. Chunking strategy: split by paragraphs and then enforce ~1000 chars per chunk
+    const rawParagraphs = content.split(/\n\s*\n/);
+    const chunks = rawParagraphs
+      .map((c) => c.trim())
+      .filter((c) => c.length > 20)
+      .flatMap((p) => splitIntoMaxChunks(p, 1000));
 
     if (chunks.length === 0) {
       return { error: "Não foi possível extrair parágrafos válidos do texto." };
