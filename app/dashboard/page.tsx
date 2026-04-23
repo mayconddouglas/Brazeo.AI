@@ -69,6 +69,14 @@ export default async function DashboardPage() {
     .select('intent, created_at')
     .eq('role', 'user');
 
+  const sevenDaysAgoForMood = new Date();
+  sevenDaysAgoForMood.setDate(sevenDaysAgoForMood.getDate() - 7);
+
+  const { data: moodLogs7d } = await supabase
+    .from('mood_logs')
+    .select('user_id, humor, created_at, users(name)')
+    .gte('created_at', sevenDaysAgoForMood.toISOString());
+
   const totalUserMessages = userMessages?.length || 0;
   
   // Calculate success rate (messages that have an intent recognized, i.e., intent is not null and not 'fallback' or 'desconhecida')
@@ -154,6 +162,52 @@ export default async function DashboardPage() {
   const hasData = totalUserMessages > 0;
   const gaugeCircumference = 289;
   const gaugeOffset = gaugeCircumference - (successRate / 100) * gaugeCircumference;
+
+  const wellbeingMoods = [
+    { key: 'otimo', label: 'Ótimo', emoji: '😊', accent: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20' },
+    { key: 'bem', label: 'Bem', emoji: '🙂', accent: 'bg-sky-500/10 text-sky-700 border-sky-500/20' },
+    { key: 'neutro', label: 'Neutro', emoji: '😐', accent: 'bg-muted text-muted-foreground border-border' },
+    { key: 'estressado', label: 'Estressado', emoji: '😰', accent: 'bg-amber-500/10 text-amber-700 border-amber-500/20' },
+    { key: 'triste', label: 'Triste', emoji: '😔', accent: 'bg-rose-500/10 text-rose-700 border-rose-500/20' },
+  ] as const;
+
+  const wellbeingCounts = wellbeingMoods.reduce((acc, m) => {
+    acc[m.key] = 0;
+    return acc;
+  }, {} as Record<string, number>);
+
+  moodLogs7d?.forEach((l: any) => {
+    const k = l?.humor;
+    if (k && typeof wellbeingCounts[k] === 'number') {
+      wellbeingCounts[k] += 1;
+    }
+  });
+
+  const wellbeingTotal = Object.values(wellbeingCounts).reduce((sum, v) => sum + v, 0);
+
+  const threeDaysAgoForNegative = new Date();
+  threeDaysAgoForNegative.setDate(threeDaysAgoForNegative.getDate() - 3);
+
+  const negativeByUser = new Map<string, { userId: string; name: string; count: number }>();
+  moodLogs7d?.forEach((l: any) => {
+    if (!l?.created_at || !l?.user_id) return;
+    const createdAt = new Date(l.created_at);
+    if (createdAt < threeDaysAgoForNegative) return;
+    if (l.humor !== 'estressado' && l.humor !== 'triste') return;
+
+    const userId = l.user_id as string;
+    const name = l.users?.name || "Desconhecido";
+    const current = negativeByUser.get(userId);
+    negativeByUser.set(userId, {
+      userId,
+      name,
+      count: (current?.count || 0) + 1,
+    });
+  });
+
+  const topNegativeUsers = Array.from(negativeByUser.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 
   return (
     <div className="flex flex-col gap-6 md:gap-8">
@@ -381,6 +435,76 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <CardTitle>Termômetro de Bem-estar</CardTitle>
+          <CardDescription>Leitura rápida do humor dos usuários para identificar quem pode precisar de mais atenção.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {wellbeingMoods.map((m) => {
+              const count = wellbeingCounts[m.key] || 0;
+              const pct = wellbeingTotal > 0 ? Math.round((count / wellbeingTotal) * 100) : 0;
+
+              return (
+                <Card key={m.key} className="shadow-none">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`inline-flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-md border ${m.accent}`}>
+                        <span className="text-base leading-none">{m.emoji}</span>
+                        <span>{m.label}</span>
+                      </div>
+                      <span className="text-2xl font-bold tabular-nums">{count}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <Progress value={pct} className="h-2 bg-muted/50" />
+                      <p className="text-[11px] text-muted-foreground">{pct}% dos registros (7 dias)</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Top 3 usuários com humor negativo (últimos 3 dias)</h3>
+              <Badge variant="outline" className="border-orange-500/20 bg-orange-500/10 text-orange-700">
+                Alerta
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              {topNegativeUsers.map((u) => {
+                const initials = (u.name || "U").substring(0, 2).toUpperCase();
+                return (
+                  <div key={u.userId} className="flex items-center justify-between gap-3 p-3 rounded-xl border bg-muted/10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Avatar className="h-9 w-9 border shadow-sm">
+                        <AvatarFallback className="bg-orange-500/10 text-orange-700 font-semibold text-xs">{initials}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium truncate">{u.name}</span>
+                        <span className="text-xs text-muted-foreground truncate">Registros negativos: {u.count}</span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="border-orange-500/20 bg-orange-500/10 text-orange-700 whitespace-nowrap">
+                      Atenção
+                    </Badge>
+                  </div>
+                );
+              })}
+
+              {!topNegativeUsers.length && (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground border-2 border-dashed rounded-xl bg-muted/10">
+                  <p className="text-sm font-medium text-foreground/70">Sem alertas no momento.</p>
+                  <p className="text-xs mt-1 max-w-[320px] mx-auto">Nenhum usuário teve muitos registros de estresse/tristeza nos últimos 3 dias.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
