@@ -13,7 +13,8 @@ import {
   FlaskConical,
   TrendingUp,
   Clock,
-  Terminal
+  Terminal,
+  Target
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -57,6 +58,11 @@ const data = {
       title: "Lembretes",
       url: "/dashboard/reminders",
       icon: Clock,
+    },
+    {
+      title: "Missões",
+      url: "/dashboard/missions",
+      icon: Target,
     },
     {
       title: "Conversas",
