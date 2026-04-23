@@ -220,6 +220,54 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
 
   try {
     const openai = createOpenAIClient(user.settings?.openrouter_api_key);
+
+    if (!isTestMode) {
+      const focoAtivo = user.preferences?.foco_ativo;
+      if (focoAtivo && focoAtivo.termina_em) {
+        const now = new Date();
+        const endsAt = new Date(focoAtivo.termina_em);
+        const textLc = contentString.toLowerCase();
+        const isUrgent = textLc.includes('urgente') || textLc.includes('emergência') || textLc.includes('emergencia') || textLc.includes('ajuda');
+
+        if (Number.isFinite(endsAt.getTime()) && now < endsAt && !isUrgent) {
+          const endTime = endsAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const focusMsg = `Você está em modo foco até ${endTime} 🎯 focando em: ${focoAtivo.tarefa}.\nMe chama quando terminar! 💪`;
+
+          try {
+            await supabase.from('messages').insert([{
+              user_id: user.id,
+              role: 'assistant',
+              content: focusMsg,
+              intent: 'resposta_livre'
+            }]);
+          } catch {}
+
+          sendWhatsAppMessage(phone, focusMsg, user.settings).catch(console.error);
+          return focusMsg;
+        }
+
+        if (Number.isFinite(endsAt.getTime()) && now >= endsAt) {
+          const prefs = user.preferences || {};
+          const minutos = focoAtivo.minutos;
+          delete prefs.foco_ativo;
+          await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
+
+          const endMsg = `Seu foco de ${minutos} min acabou! 🎉\nComo foi? Conseguiu focar na tarefa?`;
+
+          try {
+            await supabase.from('messages').insert([{
+              user_id: user.id,
+              role: 'assistant',
+              content: endMsg,
+              intent: 'resposta_livre'
+            }]);
+          } catch {}
+
+          sendWhatsAppMessage(phone, endMsg, user.settings).catch(console.error);
+          return endMsg;
+        }
+      }
+    }
     
     // --- LÓGICA DE ONBOARDING ---
     if (!user.name || user.name.trim() === '') {
@@ -425,6 +473,21 @@ Nunca saia do seu personagem.`;
               humor: { type: 'string', enum: ['otimo', 'bem', 'neutro', 'estressado', 'triste', 'frustrado'], description: 'Humor percebido do usuário.' }
             },
             required: ['humor']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'iniciar_foco',
+          description: 'Ativa o modo foco por X minutos. O agente bloqueará conversas não urgentes durante esse período.',
+          parameters: {
+            type: 'object',
+            properties: {
+              minutos: { type: 'number', description: 'Duração do foco em minutos.' },
+              tarefa: { type: 'string', description: 'Tarefa que o usuário vai focar.' }
+            },
+            required: ['minutos', 'tarefa']
           }
         }
       },

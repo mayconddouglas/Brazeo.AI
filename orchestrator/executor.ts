@@ -12,6 +12,8 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleConfirmarHabito(user, args);
     case 'registrar_humor':
       return await handleRegistrarHumor(user, args);
+    case 'iniciar_foco':
+      return await handleIniciarFoco(user, args);
     case 'planejar_semana':
       return await handlePlanejarSemana(user);
     case 'resumir_texto':
@@ -193,6 +195,44 @@ async function handleRegistrarHumor(user: any, args: any) {
   return {
     success: true,
     instruction: 'O humor foi registrado. Responda com empatia e ofereça ajuda prática.'
+  };
+}
+
+async function handleIniciarFoco(user: any, args: any) {
+  const minutos = Number(args.minutos);
+  const tarefa = typeof args.tarefa === 'string' ? args.tarefa.trim() : '';
+
+  if (!Number.isFinite(minutos) || minutos <= 0 || !tarefa) {
+    return { error: 'Dados inválidos. Peça ao usuário o tempo em minutos e a tarefa do foco.' };
+  }
+
+  const supabase = getServiceSupabase();
+  const prefs = user.preferences || {};
+
+  const now = new Date();
+  const endsAt = new Date(now);
+  endsAt.setMinutes(endsAt.getMinutes() + minutos);
+
+  prefs.foco_ativo = {
+    tarefa,
+    termina_em: endsAt.toISOString(),
+    minutos,
+  };
+
+  const { error } = await supabase
+    .from('users')
+    .update({ preferences: prefs })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('Error starting focus:', error);
+    return { error: `Falha ao ativar o modo foco: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    foco_ativo: prefs.foco_ativo,
+    instruction: 'Confirme para o usuário que o modo foco foi iniciado e diga até que horas ele vai ficar focado. Avise que só vai responder mensagens urgentes nesse período.'
   };
 }
 
