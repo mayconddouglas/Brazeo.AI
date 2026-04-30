@@ -103,29 +103,40 @@ export async function POST(req: Request) {
         content = '[Imagem recebida, mas sem dados base64]';
       }
     } else if (message?.audioMessage) {
-      const base64Audio = messageData.message.base64 || messageData.base64 || message.audioMessage.base64;
+      const audioUrl =
+        message.audioMessage.url ||
+        message.audioMessage.audioUrl ||
+        message.audioMessage.mediaUrl ||
+        messageData.url ||
+        messageData.audio_url ||
+        null;
       hasClearIntent = true;
       
-      if (base64Audio) {
-        try {
-          const supabase = getServiceSupabase();
-          const { data: settings } = await supabase.from('settings').select('openai_api_key, groq_api_key').eq('id', 1).single();
-          
-          // Prioritize Groq for audio transcription because it's faster and free, fallback to OpenAI
-          const apiKey = settings?.groq_api_key || settings?.openai_api_key || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
-
-          if (apiKey) {
-            const transcript = await transcribeAudio(base64Audio, apiKey);
-            content = transcript ? `[Áudio transcrito pelo usuário]: "${transcript}"` : '[Áudio recebido, mas inaudível]';
-          } else {
-            content = '[Áudio recebido, mas a chave de transcrição Whisper não está configurada no painel]';
-          }
-        } catch (err) {
-          console.error('Transcription error:', err);
-          content = '[Áudio recebido, mas ocorreu um erro na transcrição]';
-        }
+      if (audioUrl) {
+        content = `[Áudio enviado pelo usuário]\nUse a ferramenta transcrever_audio com audio_url: ${audioUrl}`;
       } else {
-        content = '[Áudio recebido, mas o webhook não está enviando dados base64]';
+        const base64Audio = messageData.message.base64 || messageData.base64 || message.audioMessage.base64;
+
+        if (base64Audio) {
+          try {
+            const supabase = getServiceSupabase();
+            const { data: settings } = await supabase.from('settings').select('openai_api_key, groq_api_key').eq('id', 1).single();
+
+            const apiKey = settings?.groq_api_key || settings?.openai_api_key || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY;
+
+            if (apiKey) {
+              const transcript = await transcribeAudio(base64Audio, apiKey);
+              content = transcript ? `[Áudio transcrito pelo usuário]: "${transcript}"` : '[Áudio recebido, mas inaudível]';
+            } else {
+              content = '[Áudio recebido, mas a chave de transcrição Whisper não está configurada no painel]';
+            }
+          } catch (err) {
+            console.error('Transcription error:', err);
+            content = '[Áudio recebido, mas ocorreu um erro na transcrição]';
+          }
+        } else {
+          content = '[Áudio recebido, mas o webhook não está enviando URL nem dados base64]';
+        }
       }
     } else {
       return NextResponse.json({ success: true, message: 'Ignored: Unsupported message type' });

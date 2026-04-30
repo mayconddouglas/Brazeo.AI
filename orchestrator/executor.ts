@@ -4,6 +4,8 @@ export async function executeTool(name: string, args: any, user: any) {
   switch (name) {
     case 'criar_lembrete':
       return await handleCriarLembrete(user, args);
+    case 'transcrever_audio':
+      return await handleTranscreverAudio(user, args);
     case 'criar_missao':
       return await handleCriarMissao(user, args);
     case 'criar_habito':
@@ -36,6 +38,59 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleSalvarAniversario(user, args);
     default:
       return { error: 'Ferramenta desconhecida' };
+  }
+}
+
+async function handleTranscreverAudio(user: any, args: any) {
+  if (!args.audio_url) {
+    return { error: 'URL do áudio ausente. Peça ao usuário para reenviar o áudio.' };
+  }
+
+  const apiKey = user.settings?.openai_api_key || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return { error: 'Transcrição indisponível: a chave da OpenAI não está configurada.' };
+  }
+
+  try {
+    const audioRes = await fetch(args.audio_url);
+    if (!audioRes.ok) {
+      return { error: 'Falha ao baixar o áudio para transcrição.' };
+    }
+
+    const audioBuffer = await audioRes.arrayBuffer();
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/ogg' });
+
+    const form = new FormData();
+    form.append('file', audioBlob, 'audio.ogg');
+    form.append('model', 'whisper-1');
+    form.append('language', 'pt');
+
+    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: form,
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      const message = data?.error?.message || 'Falha ao transcrever o áudio.';
+      return { error: message };
+    }
+
+    const transcription = data?.text;
+    if (!transcription) {
+      return { error: 'Transcrição vazia ou indisponível.' };
+    }
+
+    return {
+      success: true,
+      transcription,
+      instruction: 'Use o texto transcrito acima como se fosse a mensagem digitada pelo usuário e responda normalmente ao pedido.',
+    };
+  } catch (error: any) {
+    return { error: `Falha ao transcrever o áudio: ${error.message}` };
   }
 }
 

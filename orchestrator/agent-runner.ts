@@ -420,6 +420,20 @@ Nunca saia do seu personagem.`;
       {
         type: 'function',
         function: {
+          name: 'transcrever_audio',
+          description: 'Transcreve um áudio enviado pelo usuário via WhatsApp usando o modelo Whisper. Use quando o usuário enviar uma mensagem de voz.',
+          parameters: {
+            type: 'object',
+            properties: {
+              audio_url: { type: 'string', description: 'URL do arquivo de áudio enviado pelo usuário.' }
+            },
+            required: ['audio_url']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
           name: 'criar_missao',
           description: 'Cria uma missão de longo prazo com objetivo claro e prazo definido. Use quando o usuário quiser se comprometer com uma meta de 30, 60 ou 90 dias.',
           parameters: {
