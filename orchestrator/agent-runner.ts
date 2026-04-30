@@ -64,6 +64,7 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
   const supabase = getServiceSupabase();
   let user: any = { id: 'mock-user-id', status: 'active', phone };
   let history: any[] = [];
+  let filteredHistory: any[] = [];
   let userMessageId: string | null = null;
   let usageNotice: string | null = null;
 
@@ -190,10 +191,12 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(11);
+
+      filteredHistory = historyData ? historyData.slice(1) : [];
         
       if (historyData) {
-        history = historyData.reverse();
+        history = filteredHistory.reverse();
       }
     }
     
@@ -384,21 +387,18 @@ Nunca saia do seu personagem.`;
 
     const messages: any[] = [{ role: 'system', content: systemPrompt }];
 
-    // Inject history (which already includes the current message since we fetched it after inserting)
-    history.forEach((m, index) => {
+    // Inject history
+    filteredHistory.forEach((m, index) => {
       // Map database roles to OpenAI roles. If unknown, default to 'user'
       const role = m.role === 'assistant' ? 'assistant' : 'user';
-      if (index === history.length - 1 && role === 'user' && Array.isArray(content)) {
+      if (m.id === userMessageId && role === 'user' && Array.isArray(content)) {
         messages.push({ role, content: content });
       } else {
         messages.push({ role, content: m.content });
       }
     });
 
-    // If for some reason history is empty, push the current message
-    if (history.length === 0) {
-      messages.push({ role: 'user', content: content });
-    }
+    messages.push({ role: 'user', content: content });
 
     const tools = [
       {
