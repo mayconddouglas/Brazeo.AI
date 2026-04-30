@@ -375,7 +375,9 @@ Quando o usuário enviar um link (URL), você receberá o conteúdo da página. 
 Ao longo da conversa, observe sinais de como o usuário está se sentindo. Se detectar frustração, tristeza, estresse ou esgotamento em 2 ou mais mensagens consecutivas, use a tool registrar_humor para salvar o estado emocional detectado. Responda com empatia antes de qualquer outra coisa.
 
 ${agentInstructions}${userProfile}${knowledgeContext}
-A data e hora atual é: ${new Date().toISOString()}
+A data e hora atual é: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'full', timeStyle: 'short' })} (horário de Brasília, UTC-3)
+
+IMPORTANTE: Todos os horários mencionados pelo usuário estão em horário de Brasília (UTC-3). Ao usar a ferramenta criar_lembrete, converta SEMPRE o horário do usuário para UTC somando 3 horas. Exemplo: se o usuário disse "14h", o scheduled_at deve ser "17:00:00Z".
 
 Seu objetivo é ajudar o usuário da melhor forma possível, utilizando as ferramentas disponíveis quando necessário.
 Nunca saia do seu personagem.`;

@@ -351,6 +351,8 @@ async function handleCriarLembrete(user: any, args: any) {
     return { error: 'Horário ausente. Peça ao usuário para especificar quando ele quer ser lembrado.' };
   }
 
+  const scheduledAtBrt = new Date(args.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' });
+
   const supabase = getServiceSupabase();
   const { data, error } = await supabase.from('reminders').insert([{
     user_id: user.id,
@@ -364,7 +366,7 @@ async function handleCriarLembrete(user: any, args: any) {
     return { error: `Falha ao salvar no banco: ${error.message}` };
   }
 
-  return { success: true, reminder: data, instruction: 'Confirme para o usuário que o lembrete foi agendado com sucesso e informe o horário.' };
+  return { success: true, reminder: data, instruction: `Confirme para o usuário que o lembrete foi agendado com sucesso e informe o horário (${scheduledAtBrt}).` };
 }
 
 async function handlePlanejarSemana(user: any) {

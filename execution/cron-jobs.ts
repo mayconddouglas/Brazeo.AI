@@ -20,7 +20,8 @@ export async function checkAndSendReminders() {
     // Send WhatsApp message
     const phone = reminder.users?.phone;
     if (phone) {
-      await sendWhatsAppMessage(phone, `⏰ Lembrete: ${reminder.content}`);
+      const timeBrt = new Date(reminder.scheduled_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', timeStyle: 'short' });
+      await sendWhatsAppMessage(phone, `⏰ Lembrete (${timeBrt}): ${reminder.content}`);
     }
 
     // Update status or reschedule if recurrent
