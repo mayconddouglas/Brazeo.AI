@@ -172,35 +172,50 @@ async function handleCriarHabito(user: any, args: any) {
 }
 
 async function handleConfirmarHabito(user: any, args: any) {
-  if (!args.habit_id) {
-    return { error: 'ID do hábito ausente.' };
+  const supabase = getServiceSupabase();
+  if (!args.habit_nome) {
+    return { error: 'Nome do hábito ausente.' };
   }
 
-  const supabase = getServiceSupabase();
-  const { data: habit, error: fetchError } = await supabase
+  const { data: habits, error: fetchError } = await supabase
     .from('habits')
     .select('*')
-    .eq('id', args.habit_id)
     .eq('user_id', user.id)
-    .single();
+    .eq('status', 'active');
 
-  if (fetchError || !habit) {
-    return { error: 'Hábito não encontrado.' };
+  if (fetchError) {
+    return { error: 'Falha ao buscar hábitos ativos.' };
+  }
+
+  if (!habits || habits.length === 0) {
+    return { error: 'Você não tem hábitos ativos no momento.' };
+  }
+
+  const query = String(args.habit_nome).trim().toLowerCase();
+  const matchedHabit = habits.find((h: any) => {
+    const saved = String(h.nome || '').trim().toLowerCase();
+    if (!saved || !query) return false;
+    return saved.includes(query) || query.includes(saved);
+  });
+
+  if (!matchedHabit) {
+    const list = habits.map((h: any) => `- ${h.nome}`).join('\n');
+    return { error: `Não encontrei um hábito correspondente. Hábitos ativos:\n${list}` };
   }
 
   const now = new Date();
-  const last = habit.last_check_in ? new Date(habit.last_check_in) : null;
+  const last = matchedHabit.last_check_in ? new Date(matchedHabit.last_check_in) : null;
 
   const toUtcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 
-  let nextStreak = typeof habit.streak === 'number' ? habit.streak : 0;
+  let nextStreak = typeof matchedHabit.streak === 'number' ? matchedHabit.streak : 0;
 
   if (!last) {
     nextStreak = 1;
   } else {
     const diffDays = Math.floor((toUtcDay(now) - toUtcDay(last)) / (1000 * 60 * 60 * 24));
     if (diffDays === 0) {
-      nextStreak = nextStreak;
+      return { error: 'O check-in de hoje já foi feito para esse hábito.' };
     } else if (diffDays === 1) {
       nextStreak = nextStreak + 1;
     } else {
@@ -211,7 +226,7 @@ async function handleConfirmarHabito(user: any, args: any) {
   const { error: updateError } = await supabase
     .from('habits')
     .update({ last_check_in: now.toISOString(), streak: nextStreak })
-    .eq('id', habit.id);
+    .eq('id', matchedHabit.id);
 
   if (updateError) {
     console.error('Error confirming habit:', updateError);
@@ -220,9 +235,9 @@ async function handleConfirmarHabito(user: any, args: any) {
 
   return {
     success: true,
-    habit_id: habit.id,
+    habit_nome: matchedHabit.nome,
     streak: nextStreak,
-    instruction: `Confirme para o usuário que o check-in foi registrado e parabenize pelo streak de ${nextStreak} dias.`
+    instruction: `Confirme para o usuário que o check-in foi registrado com sucesso e parabenize com entusiasmo pelo streak de ${nextStreak} dias 🔥`
   };
 }
 

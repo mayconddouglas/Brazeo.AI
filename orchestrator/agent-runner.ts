@@ -468,13 +468,13 @@ Nunca saia do seu personagem.`;
         type: 'function',
         function: {
           name: 'confirmar_habito',
-          description: 'Registra o check-in de um hábito e atualiza o streak. Use quando o usuário disser que fez o hábito hoje.',
+          description: 'Registra o check-in de um hábito e atualiza o streak. Use quando o usuário disser que fez o hábito hoje. Inferir o nome do hábito pelo contexto da conversa e enviar em habit_nome.',
           parameters: {
             type: 'object',
             properties: {
-              habit_id: { type: 'string', description: 'ID (UUID) do hábito que o usuário está confirmando.' }
+              habit_nome: { type: 'string', description: 'Nome ou descrição do hábito que o usuário está confirmando. Ex: corrida, leitura, beber água.' }
             },
-            required: ['habit_id']
+            required: ['habit_nome']
           }
         }
       },
