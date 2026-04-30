@@ -28,10 +28,18 @@ async function transcribeAudio(base64: string, apiKey: string) {
 export async function POST(req: Request) {
   try {
     const webhookSecret = process.env.WEBHOOK_SECRET;
-    const reqSecret = req.headers.get('x-webhook-secret');
+    if (webhookSecret) {
+      const headerToken = req.headers.get('x-webhook-token') || req.headers.get('authorization');
+      const queryToken = new URL(req.url).searchParams.get('token');
+      let token = headerToken || queryToken || '';
 
-    if (!webhookSecret || reqSecret !== webhookSecret) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      if (token.toLowerCase().startsWith('bearer ')) {
+        token = token.slice(7).trim();
+      }
+
+      if (token !== webhookSecret) {
+        return new Response('unauthorized', { status: 401 });
+      }
     }
 
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
