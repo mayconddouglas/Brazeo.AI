@@ -13,6 +13,13 @@ const SMART_SKILLS = new Set([
   'explicar_assunto',
   'criar_questionario',
   'pesquisar_internet',
+  'modo_empreendedor',
+  'coach_financeiro',
+  'modo_negociacao',
+  'revisor_texto',
+  'simulador_decisao',
+  'diario_inteligente',
+  'foco_semanal',
 ]);
 
 const SMART_KEYWORDS = [
