@@ -1,6 +1,7 @@
 import { getServiceSupabase } from '@/lib/supabase';
 import OpenAI from 'openai';
 import { executeTool } from './executor';
+import { routeModel } from './model-router';
 
 // Initialize base OpenRouter helper function to create dynamic instances
 const createOpenAIClient = (apiKey: string | undefined) => {
@@ -647,12 +648,15 @@ Nunca saia do seu personagem.`;
     ];
 
     // 3. First Call to LLM with Tools
+    const routeFirst = routeModel(contentString);
     const response = await openai.chat.completions.create({
-      model: 'anthropic/claude-haiku-4-5',
+      model: routeFirst.model,
       messages: messages,
       tools: tools as any,
       tool_choice: 'auto',
     });
+
+    console.log(`[MODEL ROUTER] tier=${routeFirst.tier} reason=${routeFirst.reason} model=${routeFirst.model}`);
 
     const responseMessage = response.choices[0].message;
     let replyText = responseMessage.content || '';
@@ -662,11 +666,13 @@ Nunca saia do seu personagem.`;
     if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
       messages.push(responseMessage);
       
+      let routeSecond = routeModel(contentString);
       for (const toolCall of responseMessage.tool_calls) {
         if (toolCall.type !== 'function') continue;
         
         const functionName = toolCall.function.name;
         intent = functionName; // Track the primary intent based on the tool called
+        routeSecond = routeModel(contentString, functionName);
         
         let functionArgs = {};
         try {
@@ -688,11 +694,12 @@ Nunca saia do seu personagem.`;
       
       // 5. Second Call to get the final response based on tool results
       const secondResponse = await openai.chat.completions.create({
-        model: 'anthropic/claude-haiku-4-5',
+        model: routeSecond.model,
         messages: messages,
       });
       
       replyText = secondResponse.choices[0].message?.content?.trim() || 'Desculpe, ocorreu um erro ao processar a ferramenta.';
+      console.log(`[MODEL ROUTER] second_call tier=${routeSecond.tier} reason=${routeSecond.reason} model=${routeSecond.model}`);
     }
 
     if (!replyText) {
