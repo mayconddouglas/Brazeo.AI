@@ -335,6 +335,71 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     }
     // --- FIM DA LÓGICA DE ONBOARDING ---
 
+    if (user.name && user.name.trim() !== '' && (!user.cidade || user.cidade.trim() === '') && history.length < 5) {
+      const lastAssistantMessage = [...history].reverse().find(m => m.role === 'assistant');
+      const askedLocation = lastAssistantMessage && String(lastAssistantMessage.content || '').includes('em qual cidade e bairro você mora');
+
+      if (!askedLocation) {
+        const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
+
+        await supabase.from('messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: replyText,
+          intent: 'onboarding_location'
+        }]);
+
+        sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+        return replyText;
+      }
+
+      const locationExtractionResponse = await openai.chat.completions.create({
+        model: 'anthropic/claude-haiku-4-5',
+        messages: [{
+          role: 'user',
+          content: `Extraia a cidade e o bairro da seguinte mensagem do usuário.\nResponda APENAS em JSON no formato:\n{ \"cidade\": \"nome da cidade\", \"bairro\": \"nome do bairro ou null\" }\nMensagem: ${contentString}`
+        }]
+      });
+
+      const raw = locationExtractionResponse.choices[0].message?.content?.trim() || '';
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        const start = raw.indexOf('{');
+        const end = raw.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+          try {
+            parsed = JSON.parse(raw.slice(start, end + 1));
+          } catch {}
+        }
+      }
+
+      const cidadeExtraida = parsed?.cidade ? String(parsed.cidade).trim() : '';
+      const bairroExtraido = parsed?.bairro ? String(parsed.bairro).trim() : null;
+
+      if (!cidadeExtraida) {
+        const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
+        await supabase.from('messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: replyText,
+          intent: 'onboarding_location_retry'
+        }]);
+
+        sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+        return replyText;
+      }
+
+      await supabase.from('users').update({
+        cidade: cidadeExtraida,
+        bairro: bairroExtraido || null
+      }).eq('id', user.id);
+
+      user.cidade = cidadeExtraida;
+      user.bairro = bairroExtraido || null;
+    }
+
     // --- LÓGICA DE FEEDBACK ---
     const trimmedContent = contentString.trim();
     if (['1', '2', '3'].includes(trimmedContent)) {
@@ -370,6 +435,10 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
       ? `\n[MEMÓRIA DE LONGO PRAZO DO USUÁRIO]\nVocê já sabe as seguintes informações sobre este usuário:\n${user.preferences.perfil.map((p: string) => `- ${p}`).join('\n')}\nUse essas informações para personalizar seu atendimento e não pergunte novamente o que você já sabe.\n` 
       : '';
 
+    const localizacaoUsuario = user.cidade
+      ? `\n[LOCALIZAÇÃO DO USUÁRIO]\nCidade: ${user.cidade}${user.bairro ? ', Bairro: ' + user.bairro : ''}\nUse essa informação para personalizar recomendações de lugares, eventos e cinema próximos ao usuário.`
+      : '';
+
     // Busca na Base de Conhecimento RAG (FAQ, Manuais da Empresa)
     const openaiApiKey = user.settings?.openai_api_key || process.env.OPENAI_API_KEY;
     const knowledgeContext = await searchKnowledgeBase(contentString, openaiApiKey as string, supabase);
@@ -387,7 +456,7 @@ Quando o usuário enviar um link (URL), você receberá o conteúdo da página. 
 
 Ao longo da conversa, observe sinais de como o usuário está se sentindo. Se detectar frustração, tristeza, estresse ou esgotamento em 2 ou mais mensagens consecutivas, use a tool registrar_humor para salvar o estado emocional detectado. Responda com empatia antes de qualquer outra coisa.
 
-${agentInstructions}${userProfile}${knowledgeContext}
+${agentInstructions}${userProfile}${localizacaoUsuario}${knowledgeContext}
 A data e hora atual é: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'full', timeStyle: 'short' })} (horário de Brasília, UTC-3)
 
 IMPORTANTE: Todos os horários mencionados pelo usuário estão em horário de Brasília (UTC-3). Ao usar a ferramenta criar_lembrete, converta SEMPRE o horário do usuário para UTC somando 3 horas. Exemplo: se o usuário disse "14h", o scheduled_at deve ser "17:00:00Z".
