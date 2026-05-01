@@ -512,29 +512,165 @@ async function handleMemorizarInformacao(user: any, args: any) {
 }
 
 async function handleModoEmpreendedor(user: any, args: any) {
-  return { error: 'Ferramenta modo_empreendedor ainda não implementada.' };
+  if (!args.ideia || !args.estagio) {
+    return { error: 'Dados incompletos. Peça ao usuário a descrição da ideia e o estágio atual (ideia, validando, em_operacao).' };
+  }
+
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from('entrepreneur_sessions').insert([{
+      user_id: user.id,
+      ideia: args.ideia,
+      estagio: args.estagio,
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Error saving entrepreneur session:', e);
+  }
+
+  return {
+    success: true,
+    instruction: `Você é um consultor de negócios experiente e direto. O usuário está\nno estágio ${args.estagio} com a seguinte ideia: ${args.ideia}.\n\nMonte um diagnóstico completo estruturado em 5 blocos:\n\n1. VALIDAÇÃO DA IDEIA — A ideia faz sentido de mercado? Qual o problema\nque resolve? Existe demanda real?\n\n2. MODELO DE NEGÓCIO — Como vai ganhar dinheiro? Quais as fontes de receita\npossíveis? Qual o ticket médio estimado?\n\n3. PÚBLICO-ALVO — Quem é o cliente ideal? Onde encontrá-lo? Qual a dor\nprincipal que esse cliente tem?\n\n4. RISCOS PRINCIPAIS — Quais os 3 maiores riscos dessa ideia? O que pode\ndar errado nos primeiros 90 dias?\n\n5. PRIMEIROS PASSOS — Liste 5 ações concretas que o usuário pode fazer\nesta semana para avançar. Seja extremamente específico e prático.\n\nFinalize perguntando em qual bloco o usuário quer se aprofundar.`
+  };
 }
 
 async function handleCoachFinanceiro(user: any, args: any) {
-  return { error: 'Ferramenta coach_financeiro ainda não implementada.' };
+  const rendaMensal = Number(args.renda_mensal);
+  const gastosFixos = Number(args.gastos_fixos);
+
+  if (!Number.isFinite(rendaMensal) || !Number.isFinite(gastosFixos) || rendaMensal <= 0 || gastosFixos < 0) {
+    return { error: 'Dados inválidos. Peça ao usuário a renda mensal e os gastos fixos mensais (valores positivos).' };
+  }
+
+  const sobra = rendaMensal - gastosFixos;
+  const percentualComprometido = (gastosFixos / rendaMensal) * 100;
+
+  const dividas = args.dividas ? String(args.dividas) : 'Nenhuma informada';
+  const objetivo = args.objetivo ? String(args.objetivo) : 'Não informado';
+
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from('financial_sessions').insert([{
+      user_id: user.id,
+      renda_mensal: rendaMensal,
+      gastos_fixos: gastosFixos,
+      dividas: args.dividas || null,
+      objetivo: args.objetivo || null,
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Error saving financial session:', e);
+  }
+
+  return {
+    success: true,
+    instruction: `Você é um coach financeiro especialista em finanças pessoais para\nbrasileiros de renda média. Analise a situação abaixo e monte um\nplano de ação completo.\n\nSITUAÇÃO FINANCEIRA:\n- Renda mensal: R$ ${rendaMensal}\n- Gastos fixos: R$ ${gastosFixos}\n- Sobra mensal: R$ ${sobra}\n- Percentual comprometido: ${percentualComprometido.toFixed(1)}%\n- Dívidas: ${dividas}\n- Objetivo: ${objetivo}\n\nMonte o diagnóstico em 4 blocos:\n\n1. DIAGNÓSTICO — Como está a saúde financeira? O percentual comprometido\né saudável? (ideal é abaixo de 70%)\n\n2. ONDE ESTÁ SANGRANDO — Com base nos gastos fixos e dívidas, identifique\nonde o dinheiro está sendo desperdiçado ou mal alocado.\n\n3. PLANO DE AÇÃO — 3 ações concretas para os próximos 30 dias para melhorar\na situação. Seja muito específico com valores e prazos.\n\n4. META DE RESERVA — Quanto o usuário deveria ter de reserva de emergência\n(6x os gastos fixos) e quanto tempo levaria para chegar lá com a sobra atual.\n\nUse linguagem simples, direta e empática. Evite jargões financeiros.`
+  };
 }
 
 async function handleDiarioInteligente(user: any, args: any) {
-  return { error: 'Ferramenta diario_inteligente ainda não implementada.' };
+  if (!args.relato || !args.humor_percebido) {
+    return { error: 'Dados incompletos. Peça ao usuário o relato e registre o humor percebido.' };
+  }
+
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from('diary_entries').insert([{
+      user_id: user.id,
+      relato: args.relato,
+      humor: args.humor_percebido,
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Error saving diary entry:', e);
+  }
+
+  try {
+    const supabase = getServiceSupabase();
+    await supabase.from('mood_logs').insert([{
+      user_id: user.id,
+      humor: args.humor_percebido,
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Error saving mood log from diary:', e);
+  }
+
+  return {
+    success: true,
+    instruction: `O usuário acabou de registrar uma entrada no diário. Humor detectado:\n${args.humor_percebido}.\n\nResponda de forma empática e acolhedora, reconhecendo o que o usuário\ncompartilhou. Depois faça UMA das seguintes ações dependendo do humor:\n\n- Se otimo ou bem: celebre com ele e pergunte o que contribuiu para\n  esse dia positivo.\n- Se neutro: reconheça e pergunte o que poderia ter tornado o dia melhor.\n- Se estressado, triste ou frustrado: valide o sentimento sem minimizar,\n  ofereça uma perspectiva gentil e pergunte se quer desabafar mais ou\n  prefere uma sugestão prática para aliviar o peso.\n\nNão dê conselhos não solicitados. Seja presente e humano.`
+  };
 }
 
 async function handleModoNegociacao(user: any, args: any) {
-  return { error: 'Ferramenta modo_negociacao ainda não implementada.' };
+  if (!args.situacao || !args.objetivo_usuario) {
+    return { error: 'Dados incompletos. Peça ao usuário a descrição da situação e o objetivo na negociação.' };
+  }
+
+  const contexto = args.contexto ? String(args.contexto) : 'Nenhum';
+
+  return {
+    success: true,
+    instruction: `Você é um especialista em negociação com base em Harvard e CNV\n(Comunicação Não-Violenta). Prepare o usuário para a seguinte negociação:\n\nSITUAÇÃO: ${args.situacao}\nOBJETIVO DO USUÁRIO: ${args.objetivo_usuario}\nCONTEXTO ADICIONAL: ${contexto}\n\nMonte o guia de negociação em 5 blocos:\n\n1. ANÁLISE DA SITUAÇÃO — Quem tem mais poder nessa negociação? Quais\nsão os interesses reais de cada lado (não apenas as posições)?\n\n2. SEUS ARGUMENTOS — Liste os 3 argumentos mais fortes que o usuário\npode usar. Para cada um, explique como apresentar de forma convincente.\n\n3. OBJEÇÕES PROVÁVEIS — Quais as 3 principais objeções ou contra-argumentos\nque a outra parte vai levantar? Como responder cada uma?\n\n4. BATNA — Qual é o melhor cenário alternativo se a negociação não der\ncerto? O usuário deve conhecer seu limite antes de entrar.\n\n5. O QUE EVITAR — Liste 3 erros comuns nesse tipo de negociação e o que\nNÃO dizer em hipótese alguma.\n\nFinalize com uma frase de abertura sugerida para o usuário usar no início\nda negociação.`
+  };
 }
 
 async function handleRevisorTexto(user: any, args: any) {
-  return { error: 'Ferramenta revisor_texto ainda não implementada.' };
+  if (!args.texto || !args.tom) {
+    return { error: 'Dados incompletos. Peça ao usuário o texto e o tom desejado.' };
+  }
+
+  const tipo = args.tipo ? String(args.tipo) : 'Não especificado';
+
+  return {
+    success: true,
+    instruction: `Você é um especialista em comunicação escrita e copywriting. Revise\ne melhore o texto abaixo.\n\nTEXTO ORIGINAL:\n${args.texto}\n\nTOM DESEJADO: ${args.tom}\nTIPO DE TEXTO: ${tipo}\n\nEntregue o resultado em 3 partes:\n\n1. TEXTO REVISADO — O texto reescrito no tom solicitado, corrigindo erros\ngramaticais, melhorando a clareza e aumentando o impacto. Mantenha a\nessência da mensagem original.\n\n2. O QUE FOI MELHORADO — Explique em 3 pontos rápidos as principais\nmudanças feitas e por que cada uma melhora o texto.\n\n3. VERSÃO ALTERNATIVA — Uma segunda versão mais curta e direta, ideal\npara quem vai ler rapidamente.\n\nEntregue o texto revisado pronto para uso, sem comentários desnecessários.`
+  };
 }
 
 async function handleSimuladorDecisao(user: any, args: any) {
-  return { error: 'Ferramenta simulador_decisao ainda não implementada.' };
+  if (!args.decisao || !args.opcoes) {
+    return { error: 'Dados incompletos. Peça ao usuário a descrição da decisão e as opções consideradas.' };
+  }
+
+  const prazo = args.prazo ? String(args.prazo) : 'Não informado';
+
+  return {
+    success: true,
+    instruction: `Você é um especialista em tomada de decisão usando frameworks baseados\nem evidências. Ajude o usuário a decidir com clareza.\n\nDECISÃO: ${args.decisao}\nOPÇÕES CONSIDERADAS: ${args.opcoes}\nPRAZO PARA DECIDIR: ${prazo}\n\nAplique os seguintes frameworks em sequência:\n\n1. ANÁLISE 10/10/10 — Como você vai se sentir sobre essa decisão daqui\n10 minutos? 10 meses? 10 anos? Aplique para cada opção.\n\n2. PIOR CENÁRIO — Qual o pior resultado possível de cada opção? O usuário\nconsegue conviver com esse pior cenário?\n\n3. CUSTO DE OPORTUNIDADE — O que o usuário abre mão ao escolher cada\nopção? O que ele ganha que não teria na outra?\n\n4. TESTE DO ARREPENDIMENTO — Daqui a 5 anos, qual decisão teria menos\nchance de gerar arrependimento?\n\n5. RECOMENDAÇÃO FINAL — Com base na análise acima, qual opção parece\nmais alinhada com os valores e objetivos do usuário? Seja direto e\njustifique em 2 frases.\n\nFinalize perguntando se o usuário quer explorar algum ponto com mais\nprofundidade.`
+  };
 }
 
 async function handleFocoSemanal(user: any, args: any) {
-  return { error: 'Ferramenta foco_semanal ainda não implementada.' };
+  if (!args.objetivo_semana || !args.prioridades) {
+    return { error: 'Dados incompletos. Peça ao usuário o objetivo da semana e as prioridades.' };
+  }
+
+  const pendencias = args.pendencias_semana_anterior ? String(args.pendencias_semana_anterior) : 'Nenhuma';
+
+  try {
+    const supabase = getServiceSupabase();
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    const monday = new Date(now);
+    monday.setDate(monday.getDate() - diff);
+    monday.setHours(0, 0, 0, 0);
+
+    await supabase.from('weekly_focus').insert([{
+      user_id: user.id,
+      objetivo_semana: args.objetivo_semana,
+      prioridades: args.prioridades,
+      pendencias_semana_anterior: args.pendencias_semana_anterior || null,
+      semana_inicio: monday.toISOString(),
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Error saving weekly focus:', e);
+  }
+
+  return {
+    success: true,
+    instruction: `O usuário acabou de definir o foco da semana. Registre e responda com\nentusiasmo.\n\nOBJETIVO DA SEMANA: ${args.objetivo_semana}\nPRIORIDADES: ${args.prioridades}\nPENDÊNCIAS DA SEMANA ANTERIOR: ${pendencias}\n\nResponda em 3 partes:\n\n1. CONFIRMAÇÃO — Confirme o foco da semana de forma motivadora e direta.\nMostre que você entendeu o que ele quer conquistar.\n\n2. DICA DA SEMANA — Dê UMA dica prática e específica relacionada ao\nobjetivo dele para maximizar o resultado desta semana.\n\n3. COMBINADO — Diga que vai acompanhar o progresso e que na sexta-feira\nvai perguntar como foi. Finalize com uma frase motivadora curta e genuína.\n\nSeja energético mas não exagerado. Trate o usuário como um parceiro\nde produtividade, não como um coach de palco.`
+  };
 }
