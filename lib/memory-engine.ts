@@ -96,7 +96,7 @@ export async function recuperarMemoriasRelevantes(user_id: string, limite: numbe
   return data.map((m: any) => `- ${m.tipo}: ${m.conteudo}`);
 }
 
-export function extrairEsalvarMemoriasDeConversa(user_id: string, mensagem: string, resposta: string) {
+export async function extrairEsalvarMemoriasDeConversa(user_id: string, mensagem: string, resposta: string) {
   try {
     const text = String(mensagem || '').toLowerCase();
     if (!text.trim()) return;

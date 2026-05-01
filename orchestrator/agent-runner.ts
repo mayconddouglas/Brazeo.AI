@@ -2,6 +2,8 @@ import { getServiceSupabase } from '@/lib/supabase';
 import OpenAI from 'openai';
 import { executeTool } from './executor';
 import { routeModel } from './model-router';
+import { registrarAtividade, registrarTema } from '@/lib/routine-engine';
+import { extrairEsalvarMemoriasDeConversa, recuperarMemoriasRelevantes } from '@/lib/memory-engine';
 
 // Initialize base OpenRouter helper function to create dynamic instances
 const createOpenAIClient = (apiKey: string | undefined) => {
@@ -68,6 +70,8 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
   let filteredHistory: any[] = [];
   let userMessageId: string | null = null;
   let usageNotice: string | null = null;
+  registrarAtividade(user.id).catch(() => {});
+  extrairEsalvarMemoriasDeConversa(user.id, contentString, '').catch(() => {});
 
   try {
     if (!isTestMode) {
@@ -370,6 +374,11 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     const openaiApiKey = user.settings?.openai_api_key || process.env.OPENAI_API_KEY;
     const knowledgeContext = await searchKnowledgeBase(contentString, openaiApiKey as string, supabase);
 
+    const memorias = await recuperarMemoriasRelevantes(user.id, 8);
+    const blocoMemoria = memorias.length > 0
+      ? `\n\nO QUE VOCÊ JÁ SABE SOBRE ESTE USUÁRIO (use naturalmente na conversa):\n${memorias.join('\n')}`
+      : '';
+
     const systemPrompt = `Você é o ${agentName}, um assistente virtual inteligente atendendo via WhatsApp.
 O seu tom de resposta deve ser estritamente: ${agentTone}.
 ${agentTone === 'fun' ? 'Use emojis frequentemente e seja muito divertido.' : agentTone === 'formal' ? 'Seja muito educado, sério, use pronomes de tratamento e evite gírias.' : agentTone === 'sales' ? 'Seja persuasivo, foque nos benefícios, crie senso de urgência e seja um ótimo vendedor.' : 'Seja amigável, direto e conciso. Use emojis moderadamente.'}
@@ -384,7 +393,7 @@ A data e hora atual é: ${new Date().toLocaleString('pt-BR', { timeZone: 'Americ
 IMPORTANTE: Todos os horários mencionados pelo usuário estão em horário de Brasília (UTC-3). Ao usar a ferramenta criar_lembrete, converta SEMPRE o horário do usuário para UTC somando 3 horas. Exemplo: se o usuário disse "14h", o scheduled_at deve ser "17:00:00Z".
 
 Seu objetivo é ajudar o usuário da melhor forma possível, utilizando as ferramentas disponíveis quando necessário.
-Nunca saia do seu personagem.`;
+Nunca saia do seu personagem.` + blocoMemoria;
 
     const messages: any[] = [{ role: 'system', content: systemPrompt }];
 
@@ -783,6 +792,7 @@ Nunca saia do seu personagem.`;
         
         const functionName = toolCall.function.name;
         intent = functionName; // Track the primary intent based on the tool called
+        registrarTema(user.id, functionName).catch(() => {});
         routeSecond = routeModel(contentString, functionName);
         
         let functionArgs = {};
