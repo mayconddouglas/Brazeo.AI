@@ -100,6 +100,7 @@ export async function avaliarEDisparar(user: any): Promise<ProactiveResult> {
     routineRes,
     memoriesRes,
     lastLogRes,
+    lastCityLogRes,
     habitsRes,
     missionRes,
     focusRes,
@@ -107,6 +108,7 @@ export async function avaliarEDisparar(user: any): Promise<ProactiveResult> {
     supabase.from('user_routine').select('*').eq('user_id', userId).single(),
     supabase.from('user_memories').select('tipo, conteudo, relevancia, ultima_referencia, criado_em').eq('user_id', userId).order('ultima_referencia', { ascending: false }).limit(5),
     supabase.from('proactive_log').select('*').eq('user_id', userId).order('enviado_em', { ascending: false }).limit(1),
+    supabase.from('proactive_log').select('enviado_em').eq('user_id', userId).eq('tipo', 'cidade').order('enviado_em', { ascending: false }).limit(1),
     supabase.from('habits').select('*').eq('user_id', userId).eq('status', 'active'),
     supabase.from('missions').select('*').eq('user_id', userId).eq('status', 'active').limit(1),
     supabase.from('weekly_focus').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(1),
@@ -115,6 +117,7 @@ export async function avaliarEDisparar(user: any): Promise<ProactiveResult> {
   const routine = routineRes.error ? null : routineRes.data;
   const memories = memoriesRes.error ? [] : (memoriesRes.data || []);
   const lastLog = lastLogRes.error ? null : (lastLogRes.data?.[0] || null);
+  const lastCityLog = lastCityLogRes.error ? null : (lastCityLogRes.data?.[0] || null);
   const habits = habitsRes.error ? [] : (habitsRes.data || []);
   const mission = missionRes.error ? null : (missionRes.data?.[0] || null);
   const focus = focusRes.error ? null : (focusRes.data?.[0] || null);
@@ -212,6 +215,25 @@ export async function avaliarEDisparar(user: any): Promise<ProactiveResult> {
     if (fw?.objetivo_semana) {
       mensagem = `${nome}, é sexta! 🎉\nVocê definiu que o foco dessa semana era: ${fw.objetivo_semana}\nComo foi? Conseguiu avançar? Me conta! 😊`;
       tipo = 'balanco_semana';
+    }
+  }
+
+  if (!mensagem && (weekday === 5 || weekday === 6) && hour >= 14 && hour <= 19) {
+    const lastCitySent = lastCityLog?.enviado_em ? new Date(lastCityLog.enviado_em) : null;
+    const olderThan7Days = !lastCitySent || (Date.now() - lastCitySent.getTime()) > 1000 * 60 * 60 * 24 * 7;
+    if (olderThan7Days) {
+      const cidade = user?.cidade || user?.city || '';
+      const diaStr = weekday === 5 ? 'sexta' : 'sábado';
+      const diaTitle = weekday === 5 ? 'Sexta' : 'Sábado';
+      const r = Math.random();
+      if (r < 0.34) {
+        mensagem = `${nome}, é ${diaStr}! 🎉 Já tem programa pra hoje?\nMe fala o que você tá com vontade — cinema, restaurante, show —\nque eu pesquiso o que tem perto de você! 😄`;
+      } else if (r < 0.67) {
+        mensagem = `Ei ${nome}! ${diaTitle} chegou 🙌\nQuer uma sugestão de programa aqui em ${cidade}?\nMe diz o estilo e eu acho algo bacana perto de você!`;
+      } else {
+        mensagem = `${nome}, fim de semana chegando! 🌆\nTem algum rolê em mente ou quer que eu veja o que tá acontecendo\nem ${cidade} esse final de semana?`;
+      }
+      tipo = 'cidade';
     }
   }
 

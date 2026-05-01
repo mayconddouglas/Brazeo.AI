@@ -20,6 +20,7 @@ const SMART_SKILLS = new Set([
   'simulador_decisao',
   'diario_inteligente',
   'foco_semanal',
+  'explorar_cidade',
 ]);
 
 const SMART_KEYWORDS = [
@@ -71,6 +72,29 @@ const SMART_KEYWORDS = [
   'me passa',
   'preciso entender',
   'quero entender',
+  'quero sair',
+  'vou sair',
+  'fim de semana',
+  'final de semana',
+  'o que tem pra fazer',
+  'o que fazer',
+  'cinema',
+  'filme',
+  'cartaz',
+  'evento',
+  'show',
+  'restaurante',
+  'onde comer',
+  'barzinho',
+  'happy hour',
+  'startup',
+  'meetup',
+  'atração',
+  'passeio',
+  'entediado',
+  'tô entediado',
+  'não tenho nada pra fazer',
+  'sugestão de programa',
 ];
 
 const normalizeText = (text: string) =>
