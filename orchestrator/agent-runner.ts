@@ -70,8 +70,6 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
   let filteredHistory: any[] = [];
   let userMessageId: string | null = null;
   let usageNotice: string | null = null;
-  registrarAtividade(user.id).catch(() => {});
-  extrairEsalvarMemoriasDeConversa(user.id, contentString, '').catch(() => {});
 
   try {
     if (!isTestMode) {
@@ -146,7 +144,9 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
       }
 
       const dailyLimit = PLAN_LIMITS[user.plan] ?? 30;
-      const todayUtc = new Date().toISOString().slice(0, 10);
+      const todayUtc = new Date().toLocaleDateString('en-CA', {
+        timeZone: 'America/Sao_Paulo'
+      });
       const prefs = user.preferences || {};
       if (prefs.data_contagem !== todayUtc) {
         prefs.msgs_hoje = 0;
@@ -178,6 +178,8 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
 
       // Update last seen
       await supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id);
+      registrarAtividade(user.id).catch(() => {});
+      extrairEsalvarMemoriasDeConversa(user.id, contentString, '').catch(() => {});
 
       // Save user message and get its ID
       const { data: insertedMessage } = await supabase.from('messages').insert([{
@@ -336,68 +338,73 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     // --- FIM DA LÓGICA DE ONBOARDING ---
 
     if (user.name && user.name.trim() !== '' && (!user.cidade || user.cidade.trim() === '') && history.length < 5) {
-      const lastAssistantMessage = [...history].reverse().find(m => m.role === 'assistant');
-      const askedLocation = lastAssistantMessage && String(lastAssistantMessage.content || '').includes('em qual cidade e bairro você mora');
+      const lastMsg = [...history].reverse().find(m => m.role === 'assistant');
+      const askingBirthday = lastMsg && String(lastMsg.content || '').includes('data de aniversário');
+      if (askingBirthday) {
+      } else {
+        const lastAssistantMessage = [...history].reverse().find(m => m.role === 'assistant');
+        const askedLocation = lastAssistantMessage && String(lastAssistantMessage.content || '').includes('em qual cidade e bairro você mora');
 
-      if (!askedLocation) {
-        const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
+        if (!askedLocation) {
+          const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
 
-        await supabase.from('messages').insert([{
-          user_id: user.id,
-          role: 'assistant',
-          content: replyText,
-          intent: 'onboarding_location'
-        }]);
+          await supabase.from('messages').insert([{
+            user_id: user.id,
+            role: 'assistant',
+            content: replyText,
+            intent: 'onboarding_location'
+          }]);
 
-        sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
-        return replyText;
-      }
-
-      const locationExtractionResponse = await openai.chat.completions.create({
-        model: 'anthropic/claude-haiku-4-5',
-        messages: [{
-          role: 'user',
-          content: `Extraia a cidade e o bairro da seguinte mensagem do usuário.\nResponda APENAS em JSON no formato:\n{ \"cidade\": \"nome da cidade\", \"bairro\": \"nome do bairro ou null\" }\nMensagem: ${contentString}`
-        }]
-      });
-
-      const raw = locationExtractionResponse.choices[0].message?.content?.trim() || '';
-      let parsed: any = null;
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        const start = raw.indexOf('{');
-        const end = raw.lastIndexOf('}');
-        if (start !== -1 && end !== -1 && end > start) {
-          try {
-            parsed = JSON.parse(raw.slice(start, end + 1));
-          } catch {}
+          sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+          return replyText;
         }
+
+        const locationExtractionResponse = await openai.chat.completions.create({
+          model: 'anthropic/claude-haiku-4-5',
+          messages: [{
+            role: 'user',
+            content: `Extraia a cidade e o bairro da seguinte mensagem do usuário.\nResponda APENAS em JSON no formato:\n{ \"cidade\": \"nome da cidade\", \"bairro\": \"nome do bairro ou null\" }\nMensagem: ${contentString}`
+          }]
+        });
+
+        const raw = locationExtractionResponse.choices[0].message?.content?.trim() || '';
+        let parsed: any = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          const start = raw.indexOf('{');
+          const end = raw.lastIndexOf('}');
+          if (start !== -1 && end !== -1 && end > start) {
+            try {
+              parsed = JSON.parse(raw.slice(start, end + 1));
+            } catch {}
+          }
+        }
+
+        const cidadeExtraida = parsed?.cidade ? String(parsed.cidade).trim() : '';
+        const bairroExtraido = parsed?.bairro ? String(parsed.bairro).trim() : null;
+
+        if (!cidadeExtraida) {
+          const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
+          await supabase.from('messages').insert([{
+            user_id: user.id,
+            role: 'assistant',
+            content: replyText,
+            intent: 'onboarding_location_retry'
+          }]);
+
+          sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
+          return replyText;
+        }
+
+        await supabase.from('users').update({
+          cidade: cidadeExtraida,
+          bairro: bairroExtraido || null
+        }).eq('id', user.id);
+
+        user.cidade = cidadeExtraida;
+        user.bairro = bairroExtraido || null;
       }
-
-      const cidadeExtraida = parsed?.cidade ? String(parsed.cidade).trim() : '';
-      const bairroExtraido = parsed?.bairro ? String(parsed.bairro).trim() : null;
-
-      if (!cidadeExtraida) {
-        const replyText = `Ótimo, ${user.name}! Para te dar recomendações de lugares, eventos e\ncinema perto de você, me fala: em qual cidade e bairro você mora?\n😊 (ex: Recife, Boa Viagem)`;
-        await supabase.from('messages').insert([{
-          user_id: user.id,
-          role: 'assistant',
-          content: replyText,
-          intent: 'onboarding_location_retry'
-        }]);
-
-        sendWhatsAppMessage(phone, replyText, user.settings).catch(console.error);
-        return replyText;
-      }
-
-      await supabase.from('users').update({
-        cidade: cidadeExtraida,
-        bairro: bairroExtraido || null
-      }).eq('id', user.id);
-
-      user.cidade = cidadeExtraida;
-      user.bairro = bairroExtraido || null;
     }
 
     // --- LÓGICA DE FEEDBACK ---
