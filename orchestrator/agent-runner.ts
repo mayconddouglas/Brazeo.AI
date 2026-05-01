@@ -644,6 +644,117 @@ Nunca saia do seu personagem.`;
             required: ['data_aniversario']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'modo_empreendedor',
+          description: 'Ativa o Modo Empreendedor. Use quando o usuário quiser estruturar uma ideia de negócio, validar um modelo, entender seus próximos passos ou pedir um diagnóstico do negócio que já tem.',
+          parameters: {
+            type: 'object',
+            properties: {
+              ideia: { type: 'string', description: 'Descrição da ideia ou negócio do usuário.' },
+              estagio: { type: 'string', enum: ['ideia', 'validando', 'em_operacao'], description: 'Estágio atual do negócio.' }
+            },
+            required: ['ideia', 'estagio']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'coach_financeiro',
+          description: 'Ativa o Coach Financeiro. Use quando o usuário quiser organizar as finanças, entender para onde o dinheiro vai, sair das dívidas ou montar uma reserva de emergência.',
+          parameters: {
+            type: 'object',
+            properties: {
+              renda_mensal: { type: 'number', description: 'Renda mensal do usuário em reais.' },
+              gastos_fixos: { type: 'number', description: 'Total de gastos fixos mensais.' },
+              dividas: { type: 'string', description: 'Descrição das dívidas atuais.' },
+              objetivo: { type: 'string', description: 'Objetivo financeiro principal do usuário.' }
+            },
+            required: ['renda_mensal', 'gastos_fixos']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'diario_inteligente',
+          description: 'Registra o relato do dia ou desabafo do usuário no diário inteligente. Use quando o usuário quiser registrar como foi seu dia, contar o que aconteceu ou expressar sentimentos sobre eventos recentes.',
+          parameters: {
+            type: 'object',
+            properties: {
+              relato: { type: 'string', description: 'O relato ou desabafo do usuário sobre o dia.' },
+              humor_percebido: { type: 'string', enum: ['otimo', 'bem', 'neutro', 'estressado', 'triste', 'frustrado'], description: 'Humor detectado pelo LLM no relato.' }
+            },
+            required: ['relato', 'humor_percebido']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'modo_negociacao',
+          description: 'Ativa o Modo Negociação. Use quando o usuário precisar se preparar para uma negociação — pedir aumento, fechar contrato, comprar algo importante ou resolver um conflito.',
+          parameters: {
+            type: 'object',
+            properties: {
+              situacao: { type: 'string', description: 'Descrição da negociação que o usuário vai enfrentar.' },
+              objetivo_usuario: { type: 'string', description: 'O que o usuário quer conquistar nessa negociação.' },
+              contexto: { type: 'string', description: 'Informações adicionais como a outra parte envolvida, histórico ou limitações.' }
+            },
+            required: ['situacao', 'objetivo_usuario']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'revisor_texto',
+          description: 'Revisa e melhora qualquer texto enviado pelo usuário. Use quando o usuário pedir para melhorar, corrigir, reescrever ou profissionalizar um e-mail, mensagem, proposta, currículo ou post.',
+          parameters: {
+            type: 'object',
+            properties: {
+              texto: { type: 'string', description: 'O texto original que o usuário quer revisar.' },
+              tom: { type: 'string', enum: ['formal', 'amigavel', 'persuasivo', 'vendas', 'direto'], description: 'O tom desejado para o texto revisado.' },
+              tipo: { type: 'string', description: 'Tipo do texto (ex: e-mail, proposta, currículo, post, mensagem).' }
+            },
+            required: ['texto', 'tom']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'simulador_decisao',
+          description: 'Ajuda o usuário a tomar uma decisão difícil usando frameworks estruturados. Use quando o usuário estiver em dúvida entre opções importantes como mudar de emprego, abrir um negócio, fazer uma compra grande ou escolher um caminho de vida.',
+          parameters: {
+            type: 'object',
+            properties: {
+              decisao: { type: 'string', description: 'Descrição da decisão que o usuário precisa tomar.' },
+              opcoes: { type: 'string', description: 'As opções que o usuário está considerando.' },
+              prazo: { type: 'string', description: 'Quando o usuário precisa decidir.' }
+            },
+            required: ['decisao', 'opcoes']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'foco_semanal',
+          description: 'Registra o objetivo principal e as 3 prioridades da semana do usuário. Use quando o usuário quiser definir o foco da semana, revisar o que foi cumprido ou planejar os próximos dias de forma intencional.',
+          parameters: {
+            type: 'object',
+            properties: {
+              objetivo_semana: { type: 'string', description: 'O objetivo principal da semana.' },
+              prioridades: { type: 'string', description: 'As 3 principais tarefas ou prioridades da semana separadas por vírgula.' },
+              pendencias_semana_anterior: { type: 'string', description: 'O que ficou pendente da semana passada.' }
+            },
+            required: ['objetivo_semana', 'prioridades']
+          }
+        }
       }
     ];
 
