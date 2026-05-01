@@ -833,6 +833,23 @@ Nunca saia do seu personagem.` + blocoMemoria;
             required: ['objetivo_semana', 'prioridades']
           }
         }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'explorar_cidade',
+          description: 'Busca recomendações de lugares, restaurantes, eventos, shows, cinema e atrações na cidade do usuário. Use quando o usuário mencionar que quer sair, estiver entediado, quiser uma sugestão de programa, perguntar sobre o que tem perto dele, quiser saber o cartaz do cinema, eventos no fim de semana, shows, bares, restaurantes ou qualquer atração local. Também use de forma proativa quando o contexto indicar que o usuário tem tempo livre.',
+          parameters: {
+            type: 'object',
+            properties: {
+              categoria: { type: 'string', enum: ['restaurante', 'cinema', 'evento', 'show', 'bar', 'atração', 'startup', 'geral'], description: 'Categoria do que o usuário quer encontrar. Use geral quando o usuário não especificou o tipo.' },
+              preferencia: { type: 'string', description: 'Preferência específica do usuário dentro da categoria. Exemplos: pizza, rock, comédia, tecnologia, samba, filme de ação.' },
+              quando: { type: 'string', enum: ['hoje', 'amanha', 'fim_de_semana', 'essa_semana'], description: 'Quando o usuário quer ir ou o evento acontece. Preencha apenas se o usuário mencionou um período.' },
+              raio_km: { type: 'number', description: 'Raio máximo de distância em km para a busca. Se o usuário mencionar uma distância específica, use esse valor.' }
+            },
+            required: ['categoria']
+          }
+        }
       }
     ];
 
