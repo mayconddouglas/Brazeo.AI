@@ -50,6 +50,8 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleSimuladorDecisao(user, args);
     case 'foco_semanal':
       return await handleFocoSemanal(user, args);
+    case 'explorar_cidade':
+      return await handleExplorarCidade(user, args);
     default:
       return { error: 'Ferramenta desconhecida' };
   }
@@ -672,5 +674,151 @@ async function handleFocoSemanal(user: any, args: any) {
   return {
     success: true,
     instruction: `O usuário acabou de definir o foco da semana. Registre e responda com\nentusiasmo.\n\nOBJETIVO DA SEMANA: ${args.objetivo_semana}\nPRIORIDADES: ${args.prioridades}\nPENDÊNCIAS DA SEMANA ANTERIOR: ${pendencias}\n\nResponda em 3 partes:\n\n1. CONFIRMAÇÃO — Confirme o foco da semana de forma motivadora e direta.\nMostre que você entendeu o que ele quer conquistar.\n\n2. DICA DA SEMANA — Dê UMA dica prática e específica relacionada ao\nobjetivo dele para maximizar o resultado desta semana.\n\n3. COMBINADO — Diga que vai acompanhar o progresso e que na sexta-feira\nvai perguntar como foi. Finalize com uma frase motivadora curta e genuína.\n\nSeja energético mas não exagerado. Trate o usuário como um parceiro\nde produtividade, não como um coach de palco.`
+  };
+}
+
+async function handleExplorarCidade(user: any, args: any) {
+  if (!user.cidade) {
+    return {
+      error: 'Cidade não configurada.',
+      instruction: 'Informe ao usuário que você ainda não sabe onde ele mora e peça para ele te dizer a cidade e o bairro para poder recomendar lugares próximos.'
+    };
+  }
+
+  const categoria = String(args.categoria || '').trim();
+  const preferencia = args.preferencia ? String(args.preferencia).trim() : '';
+  const quando = args.quando ? String(args.quando).trim() : '';
+  const bairro = user.bairro ? String(user.bairro).trim() : '';
+  const cidade = String(user.cidade).trim();
+
+  const prefRest = preferencia || 'restaurante';
+  const prefBem = preferencia || 'bem';
+  const quandoSemana = quando || 'semana';
+  const quandoFds = quando || 'fim de semana';
+  const quandoFds2 = quando || 'esse final de semana';
+  const quandoMes = quando || 'esse mês';
+
+  let queries: string[] = [];
+
+  if (categoria === 'restaurante') {
+    queries = [
+      `${prefRest} ${cidade} ${bairro} melhor avaliado 2026`.trim(),
+      `${prefRest} ${cidade} perto de ${bairro} delivery`.trim(),
+      `onde comer ${prefBem} ${cidade} recomendação`.trim(),
+    ];
+  } else if (categoria === 'cinema') {
+    queries = [
+      `cartaz cinema ${cidade} hoje ${quandoSemana}`.trim(),
+      `filmes em cartaz ${cidade} horários ingressos 2026`.trim(),
+      `cinema ${cidade} ${preferencia || ''} programação`.trim(),
+    ];
+  } else if (categoria === 'evento') {
+    queries = [
+      `eventos ${cidade} ${quandoFds} 2026`.trim(),
+      `o que fazer ${cidade} ${quandoFds2}`.trim(),
+      `agenda cultural ${cidade} ${quando || 'maio 2026'}`.trim(),
+    ];
+  } else if (categoria === 'show') {
+    queries = [
+      `shows ${cidade} ${quandoMes} ${preferencia || ''}`.trim(),
+      `agenda de shows ${cidade} 2026 ${preferencia || ''}`.trim(),
+      `eventos musicais ${cidade} ingressos`.trim(),
+    ];
+  } else if (categoria === 'bar') {
+    queries = [
+      `bares ${cidade} ${bairro} ${preferencia || ''} recomendados`.trim(),
+      `happy hour ${cidade} ${bairro} 2026`.trim(),
+      `bares mais badalados ${cidade}`.trim(),
+    ];
+  } else if (categoria === 'atração') {
+    queries = [
+      `atrações turísticas ${cidade} ${preferencia || ''}`.trim(),
+      `pontos turísticos ${cidade} o que visitar`.trim(),
+      `passeios ${cidade} ${quandoFds}`.trim(),
+    ];
+  } else if (categoria === 'startup') {
+    queries = [
+      `eventos startups tecnologia ${cidade} ${quando || '2026'}`.trim(),
+      `meetup tech ${cidade} ${quandoMes}`.trim(),
+      `ecossistema startups ${cidade} eventos networking`.trim(),
+    ];
+  } else {
+    queries = [
+      `o que fazer ${cidade} ${quando || 'esse fim de semana'} 2026`.trim(),
+      `programação cultural ${cidade} ${quando || 'maio 2026'}`.trim(),
+      `eventos ${cidade} ${quando || 'essa semana'} ${preferencia || ''}`.trim(),
+    ];
+  }
+
+  const apiKey = user.settings?.tavily_api_key || process.env.TAVILY_API_KEY;
+  if (!apiKey) {
+    return { error: 'A pesquisa na internet não está configurada. Configure a chave do Tavily para usar recomendações locais.' };
+  }
+
+  const requests = queries.map(async (query) => {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          search_depth: 'advanced',
+          include_answer: true,
+          include_images: false,
+          include_raw_content: false,
+          max_results: 5,
+        }),
+      });
+
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
+    }
+  });
+
+  const responses = await Promise.all(requests);
+  const allResults: any[] = [];
+  for (const r of responses) {
+    if (r?.results && Array.isArray(r.results)) {
+      allResults.push(...r.results);
+    }
+  }
+
+  const seen = new Set<string>();
+  const consolidated: any[] = [];
+
+  for (const r of allResults) {
+    const url = r?.url ? String(r.url) : '';
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+
+    let fonte = '';
+    try {
+      fonte = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      fonte = '';
+    }
+
+    const content = r?.content ? String(r.content) : '';
+    consolidated.push({
+      titulo: r?.title || '',
+      descricao: content.length > 200 ? content.slice(0, 200) : content,
+      url,
+      fonte,
+    });
+
+    if (consolidated.length >= 8) break;
+  }
+
+  return {
+    success: true,
+    cidade,
+    bairro: bairro || null,
+    categoria,
+    quando: quando || null,
+    resultados: consolidated,
+    instruction: `Você encontrou as seguintes opções de ${categoria} em ${cidade}.\n  \n  Apresente os resultados de forma animada e personalizada, como se\n  estivesse recomendando para um amigo. Siga estas regras:\n  \n  1. Comece com uma frase introdutória curta e animada mencionando\n     a cidade e o que você encontrou.\n  \n  2. Liste as melhores opções encontradas nos resultados. Para cada uma:\n     - Mencione o nome/título\n     - Descreva em 1-2 linhas o que é e por que vale a pena\n     - Se tiver valor/preço nos dados, mencione\n     - Se tiver horário ou data, mencione\n     - SEMPRE termine com: "🔗 Link: [url]"\n  \n  3. Se a categoria for cinema, organize por filme com horários\n     disponíveis e valor do ingresso quando disponível.\n  \n  4. Se a categoria for evento ou show, organize por data mais próxima.\n  \n  5. No final, pergunte se o usuário quer mais detalhes sobre alguma\n     opção específica ou se quer buscar em outra categoria.\n  \n  6. Se os resultados estiverem vazios ou irrelevantes, diga de forma\n     honesta que não encontrou boas opções agora e sugira tentar\n     outra categoria ou outro período.\n  \n  Tom: animado, amigável, como um amigo local que conhece a cidade.\n  Nunca liste mais de 5 opções para não sobrecarregar.`
   };
 }
