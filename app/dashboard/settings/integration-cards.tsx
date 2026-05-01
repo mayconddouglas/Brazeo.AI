@@ -3,15 +3,18 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Brain, Database, Mic, Globe } from "lucide-react";
-import { EvolutionModal, OpenRouterModal } from "./integration-modals";
+import { EvolutionModal, GroqModal, OpenAIModal, OpenRouterModal, TavilyModal } from "./integration-modals";
 import { WebhookModal } from "./webhook-modal";
+import { useMemo, useState } from "react";
 
 export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl: string }) {
-  const hasEvolutionApi = !!settings?.evolution_api_key || (!!process.env.EVOLUTION_API_KEY && !!process.env.EVOLUTION_API_URL);
-  const hasOpenRouterApi = !!settings?.openrouter_api_key || !!process.env.OPENROUTER_API_KEY;
-  const hasOpenAiApi = !!settings?.openai_api_key || !!process.env.OPENAI_API_KEY;
-  const hasGroqApi = !!settings?.groq_api_key || !!process.env.GROQ_API_KEY;
-  const hasTavilyApi = !!settings?.tavily_api_key || !!process.env.TAVILY_API_KEY;
+  const [localSettings, setLocalSettings] = useState(settings);
+
+  const hasEvolutionApi = useMemo(() => !!localSettings?.evolution_api_key && !!localSettings?.evolution_api_url && !!localSettings?.evolution_instance_name, [localSettings]);
+  const hasOpenRouterApi = useMemo(() => !!localSettings?.openrouter_api_key, [localSettings]);
+  const hasOpenAiApi = useMemo(() => !!localSettings?.openai_api_key, [localSettings]);
+  const hasGroqApi = useMemo(() => !!localSettings?.groq_api_key, [localSettings]);
+  const hasTavilyApi = useMemo(() => !!localSettings?.tavily_api_key, [localSettings]);
 
   const StatusBadge = ({ active }: { active: boolean }) => (
     <Badge variant={active ? "default" : "secondary"} className={active ? "bg-emerald-500 hover:bg-emerald-600 text-white border-transparent" : ""}>
@@ -40,7 +43,7 @@ export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl
             Conecta o agente ao WhatsApp para enviar e receber mensagens, áudios e imagens.
           </p>
           <div className="flex items-center gap-2 mt-auto pt-4">
-            <EvolutionModal initialData={settings} siteUrl={siteUrl} />
+            <EvolutionModal initialData={localSettings} siteUrl={siteUrl} onSaved={(patch) => setLocalSettings((prev: any) => ({ ...prev, ...patch }))} />
             {hasEvolutionApi && <WebhookModal siteUrl={siteUrl} />}
           </div>
         </CardContent>
@@ -65,7 +68,7 @@ export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl
             O cérebro principal do agente (Claude, GPT-4, etc) para gerar as respostas inteligentes.
           </p>
           <div className="mt-auto pt-4">
-            <OpenRouterModal initialData={settings} />
+            <OpenRouterModal initialData={localSettings} onSaved={(patch) => setLocalSettings((prev: any) => ({ ...prev, ...patch }))} />
           </div>
         </CardContent>
       </Card>
@@ -89,7 +92,7 @@ export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl
             Vetorização matemática para permitir que a IA leia e entenda os documentos da empresa (RAG).
           </p>
           <div className="mt-auto pt-4">
-            <OpenRouterModal initialData={settings} />
+            <OpenAIModal initialData={localSettings} onSaved={(patch) => setLocalSettings((prev: any) => ({ ...prev, ...patch }))} />
           </div>
         </CardContent>
       </Card>
@@ -113,7 +116,7 @@ export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl
             Transcreve os áudios enviados pelos clientes no WhatsApp em milissegundos.
           </p>
           <div className="mt-auto pt-4">
-            <OpenRouterModal initialData={settings} />
+            <GroqModal initialData={localSettings} onSaved={(patch) => setLocalSettings((prev: any) => ({ ...prev, ...patch }))} />
           </div>
         </CardContent>
       </Card>
@@ -137,7 +140,7 @@ export function IntegrationCards({ settings, siteUrl }: { settings: any, siteUrl
             Dá acesso em tempo real à internet para o agente buscar notícias, clima e informações atualizadas.
           </p>
           <div className="mt-auto pt-4">
-            <OpenRouterModal initialData={settings} />
+            <TavilyModal initialData={localSettings} onSaved={(patch) => setLocalSettings((prev: any) => ({ ...prev, ...patch }))} />
           </div>
         </CardContent>
       </Card>
