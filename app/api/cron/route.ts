@@ -7,7 +7,8 @@ import {
   checkAndSendMissionUpdate,
   checkHabitsAndNotify,
   // @ts-ignore: Function might be implemented in the future
-  checkAndSendBirthdayMessage 
+  checkAndSendBirthdayMessage,
+  runProactiveEngine
 } from '@/execution/cron-jobs';
 import { getServiceSupabase } from '@/lib/supabase';
 import { processBroadcast } from '@/app/dashboard/broadcast/actions';
@@ -77,6 +78,10 @@ export async function GET(req: Request) {
         await checkHabitsAndNotify();
         break;
 
+      case 'proativo':
+        await runProactiveEngine();
+        break;
+
       default:
         // Default behavior (no parameter or unknown parameter)
         // 1. Send Reminders
@@ -100,6 +105,8 @@ export async function GET(req: Request) {
             processBroadcast(broadcast.id).catch(console.error);
           }
         }
+
+        await runProactiveEngine();
         break;
     }
     

@@ -1,4 +1,5 @@
 import { getServiceSupabase } from '@/lib/supabase';
+import { avaliarEDisparar } from '@/lib/proactive-engine';
 
 export async function checkAndSendReminders() {
   const supabase = getServiceSupabase();
@@ -335,4 +336,28 @@ async function sendWhatsAppMessage(phone: string, text: string) {
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
   }
+}
+
+export async function runProactiveEngine() {
+  const supabase = getServiceSupabase();
+  const { data: users, error } = await supabase.from('users').select('*').eq('status', 'active');
+
+  if (error || !users) {
+    console.error('Error fetching users for proactive engine:', error);
+    return;
+  }
+
+  let evaluated = 0;
+  let triggered = 0;
+
+  for (const user of users) {
+    evaluated++;
+    try {
+      const res = await avaliarEDisparar(user);
+      if (res.enviado) triggered++;
+    } catch {}
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  console.log(`Proactive engine: avaliados=${evaluated} disparos=${triggered}`);
 }
