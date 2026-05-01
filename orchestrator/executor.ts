@@ -36,6 +36,20 @@ export async function executeTool(name: string, args: any, user: any) {
       return await handleModoProfessor(args);
     case 'salvar_aniversario':
       return await handleSalvarAniversario(user, args);
+    case 'modo_empreendedor':
+      return await handleModoEmpreendedor(user, args);
+    case 'coach_financeiro':
+      return await handleCoachFinanceiro(user, args);
+    case 'diario_inteligente':
+      return await handleDiarioInteligente(user, args);
+    case 'modo_negociacao':
+      return await handleModoNegociacao(user, args);
+    case 'revisor_texto':
+      return await handleRevisorTexto(user, args);
+    case 'simulador_decisao':
+      return await handleSimuladorDecisao(user, args);
+    case 'foco_semanal':
+      return await handleFocoSemanal(user, args);
     default:
       return { error: 'Ferramenta desconhecida' };
   }
@@ -495,4 +509,32 @@ async function handleMemorizarInformacao(user: any, args: any) {
     success: true, 
     instruction: `A informação "${args.fato}" foi salva com sucesso na sua memória de longo prazo. Você pode usar isso nas próximas interações. Agradeça ao usuário por compartilhar ou confirme de forma sutil que você se lembrará disso.` 
   };
+}
+
+async function handleModoEmpreendedor(user: any, args: any) {
+  return { error: 'Ferramenta modo_empreendedor ainda não implementada.' };
+}
+
+async function handleCoachFinanceiro(user: any, args: any) {
+  return { error: 'Ferramenta coach_financeiro ainda não implementada.' };
+}
+
+async function handleDiarioInteligente(user: any, args: any) {
+  return { error: 'Ferramenta diario_inteligente ainda não implementada.' };
+}
+
+async function handleModoNegociacao(user: any, args: any) {
+  return { error: 'Ferramenta modo_negociacao ainda não implementada.' };
+}
+
+async function handleRevisorTexto(user: any, args: any) {
+  return { error: 'Ferramenta revisor_texto ainda não implementada.' };
+}
+
+async function handleSimuladorDecisao(user: any, args: any) {
+  return { error: 'Ferramenta simulador_decisao ainda não implementada.' };
+}
+
+async function handleFocoSemanal(user: any, args: any) {
+  return { error: 'Ferramenta foco_semanal ainda não implementada.' };
 }
