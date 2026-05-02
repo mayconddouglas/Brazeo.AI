@@ -83,6 +83,8 @@ export async function checkAndSendFeedbackRequest() {
       const text = `Oi ${name}! Como estou indo até agora? 😊\nMe responde com um número:\n1 - Tô adorando 🔥\n2 - Tá bom, mas pode melhorar\n3 - Tive algum problema\nSua opinião me ajuda a ficar melhor!`;
       
       await sendWhatsAppMessage(user.phone, text);
+      prefs.aguardando_feedback = true;
+      await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
 
       prefs.ultimo_feedback = now.toISOString();
       await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);

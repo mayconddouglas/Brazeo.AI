@@ -23,6 +23,11 @@ const getBrtNow = () => {
   return { now, year, month, day, hour, weekday };
 };
 
+// Brasília é permanentemente UTC-3 desde que o Brasil aboliu o
+// horário de verão em abril de 2019 (Decreto 9.772/2019).
+// O offset fixo de +3h é seguro e intencional.
+// Se o Brasil reintroduzir horário de verão no futuro,
+// substituir por: new Intl.DateTimeFormat com timeZone America/Sao_Paulo.
 const getStartOfDayBrtUtcIso = () => {
   const { year, month, day } = getBrtNow();
   return new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0)).toISOString();

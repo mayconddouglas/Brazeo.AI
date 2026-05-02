@@ -755,7 +755,8 @@ async function handleExplorarCidade(user: any, args: any) {
     return { error: 'A pesquisa na internet não está configurada. Configure a chave do Tavily para usar recomendações locais.' };
   }
 
-  const requests = queries.map(async (query) => {
+  const selectedQueries = preferencia ? [queries[0], queries[1]] : [queries[0], queries[2]];
+  const requests = selectedQueries.map(async (query) => {
     try {
       const response = await fetch('https://api.tavily.com/search', {
         method: 'POST',
@@ -767,7 +768,7 @@ async function handleExplorarCidade(user: any, args: any) {
           include_answer: true,
           include_images: false,
           include_raw_content: false,
-          max_results: 5,
+          max_results: 4,
         }),
       });
 

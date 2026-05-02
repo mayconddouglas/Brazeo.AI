@@ -410,13 +410,16 @@ export async function runAgent(phone: string, content: string | any[]): Promise<
     // --- LÓGICA DE FEEDBACK ---
     const trimmedContent = contentString.trim();
     if (['1', '2', '3'].includes(trimmedContent)) {
-      const lastAssistantMessage = history.find(m => m.role === 'assistant');
-      if (lastAssistantMessage && lastAssistantMessage.content.includes('Como estou indo até agora?')) {
-        
+      const aguardandoFeedback = user.preferences?.aguardando_feedback === true;
+      if (aguardandoFeedback) {
         await supabase.from('feedbacks').insert([{
           user_id: user.id,
           score: parseInt(trimmedContent)
         }]);
+
+        const prefs = user.preferences || {};
+        prefs.aguardando_feedback = false;
+        await supabase.from('users').update({ preferences: prefs }).eq('id', user.id);
 
         const replyText = "Muito obrigada pelo seu feedback! Isso me ajuda a melhorar cada vez mais. 🥰";
         
